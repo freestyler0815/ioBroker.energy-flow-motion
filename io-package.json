@@ -85,5 +85,422 @@
         "batteryExists": "false"
     },
     "objects": [],
-    "instanceObjects": []
+    "instanceObjects": [
+		{
+			"_id": "power",
+			"type": "channel",
+			"common": {
+				"name": "Power Values"
+			},
+			"native": ""
+		},
+		{
+			"_id": "power.load",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Load",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kW"
+			},
+			"native": {}
+		},
+		{
+			"_id": "power.pvpower",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "PV Power",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kW"
+			},
+			"native": {}
+		},
+		{
+			"_id": "power.import",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Import",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kW"
+			},
+			"native": {}
+		},
+		{
+			"_id": "power.export",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Export",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kW"
+			},
+			"native": {}
+		},
+		{
+			"_id": "power.batteryCharge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Charge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kW"
+			},
+			"native": {}
+		},
+		{
+			"_id": "power.batteryDischarge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Discharge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kW"
+			},
+			"native": {}
+		},
+		{
+			"_id": "power.batterySoC",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery SoC",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy",
+			"type": "channel",
+			"common": {
+				"name": "Energy Values"
+			},
+			"native": ""
+		},
+		{
+			"_id": "energy.today",
+			"type": "channel",
+			"common": {
+				"name": "Energy Values Today"
+			},
+			"native": ""
+		},
+		{
+			"_id": "energy.today.load",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Load",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.today.pvpower",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "PV Power",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.today.export",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Export",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.today.import",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Import",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.today.batteryCharge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Charge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.today.batteryDischarge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Discharge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.today.selfConsumption",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Self Consumption",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.today.date",
+			"type": "state",
+			"common": {
+				"role": "value.time",
+				"name": "Date",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0				
+			},
+			"native": {
+				"type": "object",
+				"name": "Datum",
+				"role": "date"
+			}
+		},
+		{
+			"_id": "energy.today.selfConsumptionQuota",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Self Consumption Quota",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.today.autarchyQuota",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Autarchy Quota",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.yesterday",
+			"type": "channel",
+			"common": {
+				"name": "Energy Values Yesterday"
+			},
+			"native": ""
+		},
+		{
+			"_id": "energy.yesterday.load",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Load",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.yesterday.pvpower",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "PV Power",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.yesterday.export",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Export",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.yesterday.import",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Import",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.yesterday.batteryCharge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Charge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.yesterday.batteryDischarge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Discharge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.yesterday.selfConsumption",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Self Consumption",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.yesterday.date",
+			"type": "state",
+			"common": {
+				"role": "value.time",
+				"name": "Date",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0				
+			},
+			"native": {
+				"type": "object",
+				"name": "Datum",
+				"role": "date"
+			}
+		},
+		{
+			"_id": "energy.yesterday.selfConsumptionQuota",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Self Consumption Quota",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.yesterday.autarchyQuota",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Autarchy Quota",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		}
+	]
 }
