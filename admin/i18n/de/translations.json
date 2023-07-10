@@ -1,0 +1,7 @@
+{
+    "Options": "Optionen",
+    "UpdateInterval": "Updateintervall",
+    "Update Interval in seconds (2 to 10s possible)": "Aktualisierungsintervall in Sekunden (2 bis 10 Sekunden möglich)",
+    "BatteryExists": "Batterie vorhanden",
+    "Check if a battery exists": "Anklicken, wenn eine Batterie vorhanden ist."
+}

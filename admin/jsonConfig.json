@@ -1,0 +1,32 @@
+{
+    "i18n": true,
+    "type": "tabs",
+    "items": {
+        "_options": {
+            "type": "panel",
+            "label": "Options",
+            "items": {
+                "updateInterval":{
+                    "type": "number",
+                    "min": 2,
+                    "max": 10,
+                    "sm": 2,
+                    "md": 1,
+                    "lg": 1,
+                    "label": "UpdateInterval",
+                    "help": "Update Interval in seconds (2 to 10s possible)"
+                },
+                "batteryExists":{
+                    "newLine": true,
+                    "type": "checkbox",                    
+                    "sm": 2,
+                    "md": 1,
+                    "lg": 1,
+                    "label": "BatteryExists",
+                    "help": "Check if a battery exists"
+                }
+            }
+        }
+    }
+
+}

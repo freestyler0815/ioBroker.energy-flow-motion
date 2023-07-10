@@ -1,0 +1,7 @@
+{
+    "Options": "Параметры",
+    "UpdateInterval": "Интервал обновления",
+    "Update Interval in seconds (2 to 10s possible)": "Интервал обновления в секундах (возможно от 2 до 10 секунд)",
+    "BatteryExists": "Батарея существует",
+    "Check if a battery exists": "Проверьте, существует ли батарея"
+}

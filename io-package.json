@@ -1,89 +1,89 @@
 {
-	"common": {
-		"name": "energy-flow-motion",
-		"version": "0.0.1",
-		"news": {
-			"0.0.1": {
-				"en": "initial release",
-				"de": "Erstveröffentlichung",
-				"ru": "Начальная версия",
-				"pt": "lançamento inicial",
-				"nl": "Eerste uitgave",
-				"fr": "Première version",
-				"it": "Versione iniziale",
-				"es": "Versión inicial",
-				"pl": "Pierwsze wydanie",
-				"uk": "Початкова версія",
-				"zh-cn": "首次出版"
-			}
-		},
-		"title": "Energy Flow Motion",
-		"titleLang": {
-			"en": "Energy Flow Motion",
-			"de": "Energieflussbewegung",
-			"ru": "Движение потока энергии",
-			"pt": "Movimento do Fluxo de Energia",
-			"nl": "Energiestroom Beweging",
-			"fr": "Mouvement de flux d'énergie",
-			"it": "Movimento del flusso di energia",
-			"es": "Movimiento de flujo de energía",
-			"pl": "Ruch przepływu energii",
-			"uk": "Рух потоку енергії",
-			"zh-cn": "能量流运动"
-		},
-		"desc": {
-			"en": "Capture, calculate and sum up power and energy data. Control energy consumption.",
-			"de": "Leistungs- und Energiedaten erfassen, berechnen und zusammenfassen. Kontrollieren Sie den Energieverbrauch.",
-			"ru": "Захват, расчет и суммирование данных о мощности и энергии. Контролируйте потребление энергии.",
-			"pt": "Capture, calcule e some dados de potência e energia. Controle o consumo de energia.",
-			"nl": "Vermogens- en energiegegevens vastleggen, berekenen en optellen. Controle energieverbruik.",
-			"fr": "Capturez, calculez et résumez les données de puissance et d'énergie. Contrôler la consommation d'énergie.",
-			"it": "Cattura, calcola e riassumi i dati di potenza ed energia. Controlla il consumo di energia.",
-			"es": "Capture, calcule y resuma datos de potencia y energía. Controlar el consumo de energía.",
-			"pl": "Przechwytuj, obliczaj i sumuj dane dotyczące mocy i energii. Kontroluj zużycie energii.",
-			"uk": "Збирайте, обчислюйте та підсумовуйте дані про потужність та енергію. Контролюйте споживання енергії.",
-			"zh-cn": "捕获、计算并汇总电力和能源数据。控制能源消耗。"
-		},
-		"authors": [
-			"Andre Silz <andre.silz@netboxmail.de>"
-		],
-		"keywords": [
-			"energy",
-			"power",
-			"control"
-		],
-		"license": "MIT",
-		"platform": "Javascript/Node.js",
-		"main": "main.js",
-		"icon": "energy-flow-motion.png",
-		"enabled": true,
-		"extIcon": "https://raw.githubusercontent.com/freestyler0815/ioBroker.energy-flow-motion/main/admin/energy-flow-motion.png",
-		"readme": "https://github.com/freestyler0815/ioBroker.energy-flow-motion/blob/main/README.md",
-		"loglevel": "info",
-		"mode": "daemon",
-		"type": "energy",
-		"compact": true,
-		"connectionType": "local",
-		"dataSource": "poll",
-		"adminUI": {
-			"config": "materialize"
-		},
-		"eraseOnUpload": true,
-		"dependencies": [
-			{
-				"js-controller": ">=3.3.22"
-			}
-		],
-		"globalDependencies": [
-			{
-				"admin": ">=5.0.0"
-			}
-		]
-	},
-	"native": {
-		"option1": true,
-		"option2": "42"
-	},
-	"objects": [],
-	"instanceObjects": []
+    "common": {
+        "name": "energy-flow-motion",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung",
+                "ru": "Начальная версия",
+                "pt": "lançamento inicial",
+                "nl": "Eerste uitgave",
+                "fr": "Première version",
+                "it": "Versione iniziale",
+                "es": "Versión inicial",
+                "pl": "Pierwsze wydanie",
+                "uk": "Початкова версія",
+                "zh-cn": "首次出版"
+            }
+        },
+        "title": "Energy Flow Motion",
+        "titleLang": {
+            "en": "Energy Flow Motion",
+            "de": "Energieflussbewegung",
+            "ru": "Движение потока энергии",
+            "pt": "Movimento do Fluxo de Energia",
+            "nl": "Energiestroom Beweging",
+            "fr": "Mouvement de flux d'énergie",
+            "it": "Movimento del flusso di energia",
+            "es": "Movimiento de flujo de energía",
+            "pl": "Ruch przepływu energii",
+            "uk": "Рух потоку енергії",
+            "zh-cn": "能量流运动"
+        },
+        "desc": {
+            "en": "Capture, calculate and sum up power and energy data. Control energy consumption.",
+            "de": "Leistungs- und Energiedaten erfassen, berechnen und zusammenfassen. Kontrollieren Sie den Energieverbrauch.",
+            "ru": "Захват, расчет и суммирование данных о мощности и энергии. Контролируйте потребление энергии.",
+            "pt": "Capture, calcule e some dados de potência e energia. Controle o consumo de energia.",
+            "nl": "Vermogens- en energiegegevens vastleggen, berekenen en optellen. Controle energieverbruik.",
+            "fr": "Capturez, calculez et résumez les données de puissance et d'énergie. Contrôler la consommation d'énergie.",
+            "it": "Cattura, calcola e riassumi i dati di potenza ed energia. Controlla il consumo di energia.",
+            "es": "Capture, calcule y resuma datos de potencia y energía. Controlar el consumo de energía.",
+            "pl": "Przechwytuj, obliczaj i sumuj dane dotyczące mocy i energii. Kontroluj zużycie energii.",
+            "uk": "Збирайте, обчислюйте та підсумовуйте дані про потужність та енергію. Контролюйте споживання енергії.",
+            "zh-cn": "捕获、计算并汇总电力和能源数据。控制能源消耗。"
+        },
+        "authors": [
+            "Andre Silz <andre.silz@netboxmail.de>"
+        ],
+        "keywords": [
+            "energy",
+            "power",
+            "control"
+        ],
+        "license": "MIT",
+        "platform": "Javascript/Node.js",
+        "main": "main.js",
+        "icon": "energy-flow-motion.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/freestyler0815/ioBroker.energy-flow-motion/main/admin/energy-flow-motion.png",
+        "readme": "https://github.com/freestyler0815/ioBroker.energy-flow-motion/blob/main/README.md",
+        "loglevel": "info",
+        "mode": "daemon",
+        "type": "energy",
+        "compact": true,
+        "connectionType": "local",
+        "dataSource": "poll",
+        "adminUI": {
+            "config": "json"
+        },
+        "eraseOnUpload": true,
+        "dependencies": [
+            {
+                "js-controller": ">=3.3.22"
+            }
+        ],
+        "globalDependencies": [
+            {
+                "admin": ">=5.1.28"
+            }
+        ]
+    },
+    "native": {
+        "updateInterval": "2",
+        "batteryExists": "false"
+    },
+    "objects": [],
+    "instanceObjects": []
 }

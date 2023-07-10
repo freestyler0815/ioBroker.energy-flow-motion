@@ -1,0 +1,7 @@
+{
+    "Options": "Опції",
+    "UpdateInterval": "Інтервал оновлення",
+    "Update Interval in seconds (2 to 10s possible)": "Інтервал оновлення в секундах (можливо від 2 до 10 секунд)",
+    "BatteryExists": "Акумулятор Є",
+    "Check if a battery exists": "Перевірте наявність акумулятора"
+}
