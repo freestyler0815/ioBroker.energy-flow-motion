@@ -82,7 +82,10 @@
     },
     "native": {
         "updateInterval": "2",
-        "batteryExists": "false"
+        "batteryExists": "false",
+		"importThreshold": "50",
+		"exportThreshold": "50",
+		"powerControlChannels": "1"
     },
     "objects": [],
     "instanceObjects": [

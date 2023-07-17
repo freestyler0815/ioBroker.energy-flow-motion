@@ -2,19 +2,66 @@
     "i18n": true,
     "type": "tabs",
     "items": {
-        "_options": {
+        "_generalSetup": {
             "type": "panel",
-            "label": "Options",
+            "label": "General Setup",
             "items": {
                 "updateInterval":{
                     "type": "number",
                     "min": 2,
                     "max": 10,
                     "sm": 2,
-                    "md": 1,
-                    "lg": 1,
+                    "md": 2,
+                    "lg": 2,
                     "label": "UpdateInterval",
                     "help": "Update Interval in seconds (2 to 10s possible)"
+                },                
+                "importThreshold":{
+                        "type": "number",
+                        "min": 0,
+                        "max": 500,
+                        "sm": 2,
+                        "md": 2,
+                        "lg": 2,
+                        "label": "Import Power Threshold (W)",
+                        "help": "Threshold in Watt to detect importing Power from Grid (0W to 500W possible)"
+                },                
+                "exportThreshold":{
+                        "type": "number",
+                        "min": 0,
+                        "max": 500,
+                        "sm": 2,
+                        "md": 2,
+                        "lg": 2,
+                        "label": "Export Power Threshold (W)",
+                        "help": "Threshold in Watt to detect exporting Power to Grid (0W to 500W possible)"
+                },                
+                "PVkWp":{
+                        "type": "number",
+                        "sm": 2,
+                        "md": 2,
+                        "lg": 2,
+                        "label": "PV kWp",
+                        "help": "PV installed kW Peak Power"
+                },                
+                "powerControlActive":{
+                        "newLine": true,
+                        "type": "checkbox",
+                        "sm": 2,
+                        "md": 1,
+                        "lg": 1,
+                        "label": "Power Control active",
+                        "help": "Activate Power Control"
+                },                
+                "powerControlChannels":{
+                        "type": "number",
+                        "min": 1,
+                        "max": 20,
+                        "sm": 2,
+                        "md": 2,
+                        "lg": 2,
+                        "label": "Power Control Channels",
+                        "help": "Number of Power Control Channels (1 to 20 possible)"
                 },
                 "batteryExists":{
                     "newLine": true,
@@ -25,6 +72,59 @@
                     "label": "BatteryExists",
                     "help": "Check if a battery exists"
                 }
+            }
+        },
+        "_pvPowerData":{
+            "type": "panel",
+            "label": "PV Power Data",
+            "items": {
+                "pvPowerDataTable":{
+                    "type": "table",
+                    "label": "Pv Power Data Source Table",
+                    "items": [
+                        {
+                            "type": "objectId",
+                            "width": "250px",
+                            "title": {"en": "ObjectID"},
+                            "attr": "objectId",
+                            "filter": false,
+                            "sort": true,
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Factor (+/-)"},
+                            "attr": "factor",
+                            "filter": false,
+                            "sort": true,
+                            "default": "1"
+                        }
+                    ]
+
+                }
+            }
+
+        },
+        "_loadPowerData":{
+            "type": "panel",
+            "label": "Load Power Data",
+            "items": {
+
+            }
+        },
+        "_gridPowerData":{
+            "type": "panel",
+            "label": "Grid Power Data",
+            "items": {
+
+            }
+        },
+        "_batteryPowerData":{
+            "type": "panel",
+            "label": "Battery Power Data",
+            "items": {
+
             }
         }
     }
