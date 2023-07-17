@@ -86,7 +86,7 @@
                             "type": "objectId",
                             "width": "250px",
                             "title": {"en": "ObjectID"},
-                            "attr": "objectId",
+                            "attr": "pvObjectId",
                             "filter": false,
                             "sort": true,
                             "default": ""
@@ -95,7 +95,7 @@
                             "type": "number",
                             "width": "50px",
                             "title": {"en": "Factor (+/-)"},
-                            "attr": "factor",
+                            "attr": "pvFactor",
                             "filter": false,
                             "sort": true,
                             "default": "1"
@@ -110,21 +110,145 @@
             "type": "panel",
             "label": "Load Power Data",
             "items": {
+                "loadDataTable":{
+                    "type": "table",
+                    "label": "Load Power Data Source Table",
+                    "items": [
+                        {
+                            "type": "objectId",
+                            "width": "250px",
+                            "title": {"en": "ObjectID"},
+                            "attr": "loadObjectId",
+                            "filter": false,
+                            "sort": true,
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Factor (+/-)"},
+                            "attr": "loadFactor",
+                            "filter": false,
+                            "sort": true,
+                            "default": "1"
+                        }
+                    ]
 
+                }
             }
         },
         "_gridPowerData":{
             "type": "panel",
             "label": "Grid Power Data",
             "items": {
+                "exportDataTable":{
+                    "type": "table",
+                    "label": "Grid Export Power Data Source Table",
+                    "items": [
+                        {
+                            "type": "objectId",
+                            "width": "250px",
+                            "title": {"en": "ObjectID"},
+                            "attr": "exportObjectId",
+                            "filter": false,
+                            "sort": true,
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Factor (+/-)"},
+                            "attr": "exportFactor",
+                            "filter": false,
+                            "sort": true,
+                            "default": "1"
+                        }
+                    ]
 
+                },
+                "importDataTable":{
+                    "newLine": true,
+                    "type": "table",
+                    "label": "Grid Import Power Data Source Table",
+                    "items": [
+                        {
+                            "type": "objectId",
+                            "width": "250px",
+                            "title": {"en": "ObjectID"},
+                            "attr": "importObjectId",
+                            "filter": false,
+                            "sort": true,
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Factor (+/-)"},
+                            "attr": "importFactor",
+                            "filter": false,
+                            "sort": true,
+                            "default": "1"
+                        }
+                    ]
+
+                }
             }
         },
         "_batteryPowerData":{
             "type": "panel",
             "label": "Battery Power Data",
             "items": {
+                "batChargeDataTable":{
+                    "type": "table",
+                    "label": "Battery Charge Power Data Source Table",
+                    "items": [
+                        {
+                            "type": "objectId",
+                            "width": "250px",
+                            "title": {"en": "ObjectID"},
+                            "attr": "batChargeObjectId",
+                            "filter": false,
+                            "sort": true,
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Factor (+/-)"},
+                            "attr": "batChargeFactor",
+                            "filter": false,
+                            "sort": true,
+                            "default": "1"
+                        }
+                    ]
 
+                },
+                "batDischargeDataTable":{
+                    "newLine": true,
+                    "type": "table",
+                    "label": "Battery Discharge Power Data Source Table",
+                    "items": [
+                        {
+                            "type": "objectId",
+                            "width": "250px",
+                            "title": {"en": "ObjectID"},
+                            "attr": "batDischargeObjectId",
+                            "filter": false,
+                            "sort": true,
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Factor (+/-)"},
+                            "attr": "batDischargeFactor",
+                            "filter": false,
+                            "sort": true,
+                            "default": "1"
+                        }
+                    ]
+
+                }
             }
         }
     }
