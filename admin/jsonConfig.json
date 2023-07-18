@@ -52,16 +52,6 @@
                         "lg": 1,
                         "label": "Power Control active",
                         "help": "Activate Power Control"
-                },                
-                "powerControlChannels":{
-                        "type": "number",
-                        "min": 1,
-                        "max": 20,
-                        "sm": 2,
-                        "md": 2,
-                        "lg": 2,
-                        "label": "Power Control Channels",
-                        "help": "Number of Power Control Channels (1 to 20 possible)"
                 },
                 "batteryExists":{
                     "newLine": true,
@@ -245,6 +235,97 @@
                             "filter": false,
                             "sort": true,
                             "default": "1"
+                        }
+                    ]
+
+                }
+            }
+        },
+        "_powerControlChannels":{
+            "type": "panel",
+            "label": "Power Control Channels",
+            "items": {
+                "powerControlChannels":{
+                    "type": "table",
+                    "label": "Power Control Channels",
+                    "items": [
+                        {
+                            "type": "checkbox",
+                            "width": "15px",
+                            "title": {"en": "Enable"},
+                            "attr": "pwcChannelEnabled",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": true
+                        },
+                        {
+                            "type": "text",
+                            "width": "150px",
+                            "title": {"en": "Title"},
+                            "attr": "pwcChannelTitle",
+                            "filter": false,
+                            "sort": true,
+                            "default": ""
+                        },
+                        {
+                            "type": "text",
+                            "width": "250px",
+                            "title": {"en": "Description"},
+                            "attr": "pwcChannelDescription",
+                            "filter": false,
+                            "sort": true,
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Max. Power (kW)"},
+                            "attr": "pwcChannelMaxPower",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Min. Power (kW)"},
+                            "attr": "pwcChannelMinPower",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "20px",
+                            "title": {"en": "Step Size (kW)"},
+                            "attr": "pwcChannelStepSize",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Shutdown Delay (s)"},
+                            "attr": "pwcChannelShutdownDelay",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": "30"
+                        },
+                        {
+                            "type": "checkbox",
+                            "width": "15px",
+                            "title": {"en": "Energy Storage"},
+                            "attr": "pwcChannelEnergyStorage",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": false
                         }
                     ]
 
