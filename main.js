@@ -7,7 +7,7 @@
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
-
+let intervalId;
 // Load your modules here, e.g.:
 // const fs = require("fs");
 
@@ -32,6 +32,23 @@ class EnergyFlowMotion extends utils.Adapter {
 	 * Is called when databases are connected and adapter received configuration.
 	 */
 	async onReady() {
+		const refreshRate = parseInt(this.config.updateInterval)*1000;
+
+
+		intervalId = setInterval( () => {
+			const pvPowerSrc = this.config.pvPowerDataTable;
+            if (pvPowerSrc && Array.isArray(pvPowerSrc)) {
+                for (const p in pvPowerSrc) {
+                    const pvPower = pvPowerSrc[p];
+                    if (pvPower.pvObjectId) {
+						let objID = pvPower.pvObjectId;
+						//const objID = 'Test';
+						this.log.info('PvPowerObject: ' + objID);
+					}
+				}
+			}
+		},refreshRate);
+
 		// Initialize your adapter here
 
 		// The adapters config (in the instance object everything under the attribute "native") is accessible via
@@ -79,11 +96,12 @@ class EnergyFlowMotion extends utils.Adapter {
 		//await this.setStateAsync('testVariable', { val: true, ack: true, expire: 30 });
 
 		// examples for the checkPassword/checkGroup functions
-		let result = await this.checkPasswordAsync('admin', 'iobroker');
-		this.log.info('check user admin pw iobroker: ' + result);
+		//let result = await this.checkPasswordAsync('admin', 'iobroker');
+		//this.log.info('check user admin pw iobroker: ' + result);
 
-		result = await this.checkGroupAsync('admin', 'admin');
-		this.log.info('check group user admin group admin: ' + result);
+		//result = await this.checkGroupAsync('admin', 'admin');
+		//this.log.info('check group user admin group admin: ' + result);
+
 	}
 
 	/**
@@ -96,7 +114,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			// clearTimeout(timeout1);
 			// clearTimeout(timeout2);
 			// ...
-			// clearInterval(interval1);
+			clearInterval(intervalId);
 
 			callback();
 		} catch (e) {

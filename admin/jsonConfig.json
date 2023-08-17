@@ -74,9 +74,9 @@
                     "items": [
                         {
                             "type": "objectId",
-                            "width": "250px",
-                            "title": {"en": "ObjectID"},
                             "attr": "pvObjectId",
+                            "width": "250px",
+                            "title": {"en": "ObjectID"},                            
                             "filter": false,
                             "sort": true,
                             "default": ""
@@ -241,13 +241,13 @@
                 }
             }
         },
-        "_powerControlChannels":{
+        "_loadPowerControlChannels":{
             "type": "panel",
-            "label": "Power Control Channels",
+            "label": "Load Power Control Channels",
             "items": {
                 "powerControlChannels":{
                     "type": "table",
-                    "label": "Power Control Channels",
+                    "label": "Load Power Control Channels",
                     "items": [
                         {
                             "type": "checkbox",
@@ -316,16 +316,87 @@
                             "sort": true,
                             "style":{"textAlign": "right"},
                             "default": "30"
-                        },
+                        }
+                    ]
+
+                }
+            }
+        },
+        "_energyStorageControlChannels":{
+            "type": "panel",
+            "label": "Energy Storage Control Channels",
+            "items": {
+                "powerControlChannels":{
+                    "type": "table",
+                    "label": "Energy Storage Control Channels",
+                    "items": [
                         {
                             "type": "checkbox",
                             "width": "15px",
-                            "title": {"en": "Energy Storage"},
-                            "attr": "pwcChannelEnergyStorage",
+                            "title": {"en": "Enable"},
+                            "attr": "escChannelEnabled",
                             "filter": false,
                             "sort": true,
                             "style":{"textAlign": "right"},
-                            "default": false
+                            "default": true
+                        },
+                        {
+                            "type": "text",
+                            "width": "150px",
+                            "title": {"en": "Title"},
+                            "attr": "escChannelTitle",
+                            "filter": false,
+                            "sort": true,
+                            "default": ""
+                        },
+                        {
+                            "type": "text",
+                            "width": "250px",
+                            "title": {"en": "Description"},
+                            "attr": "escChannelDescription",
+                            "filter": false,
+                            "sort": true,
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Max. Power (kW)"},
+                            "attr": "escChannelMaxPower",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Min. Power (kW)"},
+                            "attr": "escChannelMinPower",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "20px",
+                            "title": {"en": "Step Size (kW)"},
+                            "attr": "escChannelStepSize",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Shutdown Delay (s)"},
+                            "attr": "escChannelShutdownDelay",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": "30"
                         }
                     ]
 
