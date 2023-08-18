@@ -56,7 +56,7 @@
         "platform": "Javascript/Node.js",
         "main": "main.js",
         "icon": "energy-flow-motion.png",
-        "enabled": true,
+        "enabled": false,
         "extIcon": "https://raw.githubusercontent.com/freestyler0815/ioBroker.energy-flow-motion/main/admin/energy-flow-motion.png",
         "readme": "https://github.com/freestyler0815/ioBroker.energy-flow-motion/blob/main/README.md",
         "loglevel": "info",

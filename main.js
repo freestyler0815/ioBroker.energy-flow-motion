@@ -7,7 +7,7 @@
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
-let intervalId;
+let intervalId = null;
 // Load your modules here, e.g.:
 // const fs = require("fs");
 
@@ -22,7 +22,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			name: 'energy-flow-motion',
 		});
 		this.on('ready', this.onReady.bind(this));
-		this.on('stateChange', this.onStateChange.bind(this));
+		//this.on('stateChange', this.onStateChange.bind(this));
 		// this.on('objectChange', this.onObjectChange.bind(this));
 		// this.on('message', this.onMessage.bind(this));
 		this.on('unload', this.onUnload.bind(this));
@@ -33,22 +33,33 @@ class EnergyFlowMotion extends utils.Adapter {
 	 */
 	async onReady() {
 		const refreshRate = parseInt(this.config.updateInterval)*1000;
-
-
-		intervalId = setInterval( () => {
+		this.log.info('RefreshRate:' + refreshRate);
+		//intervalId = setInterval(this.updateValues,refreshRate);
+		/*
+		intervalId = setInterval( async () => {
+			// @ts-ignore
 			const pvPowerSrc = this.config.pvPowerDataTable;
-            if (pvPowerSrc && Array.isArray(pvPowerSrc)) {
-                for (const p in pvPowerSrc) {
-                    const pvPower = pvPowerSrc[p];
-                    if (pvPower.pvObjectId) {
-						let objID = pvPower.pvObjectId;
-						//const objID = 'Test';
-						this.log.info('PvPowerObject: ' + objID);
+			let pvPowerVal = 0;
+			if (pvPowerSrc && Array.isArray(pvPowerSrc)) {
+				for (const p in pvPowerSrc) {
+					const pvPower = pvPowerSrc[p];
+					if (pvPower.pvObjectId) {
+						let pvPowerObjId = pvPower.pvObjectId;
+						let pvPowerFactor = parseFloat(pvPower.pvFactor);
+						try {
+							let pvPowerState = await this.getForeignStateAsync(pvPowerObjId);
+							if (pvPowerState.val != null) {
+								pvPowerVal = parseFloat(pvPowerState.val)*pvPowerFactor;
+							}
+							this.log.info('PvPowerObject: ' + pvPowerObjId + ' , PvPowerFactor:' + pvPowerFactor + ', PvPowerRead:' + pvPowerVal);
+						} catch (error) {
+							this.log.error(error);
+						}
 					}
 				}
 			}
 		},refreshRate);
-
+		*/
 		// Initialize your adapter here
 
 		// The adapters config (in the instance object everything under the attribute "native") is accessible via
@@ -103,6 +114,33 @@ class EnergyFlowMotion extends utils.Adapter {
 		//this.log.info('check group user admin group admin: ' + result);
 
 	}
+	/*
+	async updateValues() {
+		return new Promise(() => {
+			// @ts-ignore
+			const pvPowerSrc = this.config.pvPowerDataTable;
+			let pvPowerVal = 0;
+			if (pvPowerSrc && Array.isArray(pvPowerSrc)) {
+				for (const p in pvPowerSrc) {
+					const pvPower = pvPowerSrc[p];
+					if (pvPower.pvObjectId) {
+						let pvPowerObjId = pvPower.pvObjectId;
+						let pvPowerFactor = pvPower.pvFactor;
+						try {
+							let pvPowerState = await this.getForeignStateAsync(pvPowerObjId);
+							if (pvPowerState.val != null) {
+								pvPowerVal = parseFloat(pvPowerState.val);
+							}
+							this.log.info('PvPowerObject: ' + pvPowerObjId + 'PvPowerRead:' + pvPowerVal);
+						} catch (error) {
+							this.log.error(error);
+						}
+					}
+				}
+			}
+		}
+	}
+	*/
 
 	/**
 	 * Is called when adapter shuts down - callback has to be called under any circumstances!
@@ -114,6 +152,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			// clearTimeout(timeout1);
 			// clearTimeout(timeout2);
 			// ...
+			this.log.debug('cleaned everything up...');
 			clearInterval(intervalId);
 
 			callback();
@@ -143,7 +182,7 @@ class EnergyFlowMotion extends utils.Adapter {
 	 * Is called if a subscribed state changes
 	 * @param {string} id
 	 * @param {ioBroker.State | null | undefined} state
-	 */
+	/**
 	onStateChange(id, state) {
 		if (state) {
 			// The state was changed
@@ -153,7 +192,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			this.log.info(`state ${id} deleted`);
 		}
 	}
-
+ 	*/
 	// If you need to accept messages in your adapter, uncomment the following block and the corresponding line in the constructor.
 	// /**
 	//  * Some message was sent to this instance over message box. Used by email, pushover, text2speech, ...

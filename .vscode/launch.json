@@ -1,0 +1,34 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "attach to ioBroker-Adapter",
+            "address": "127.0.0.1",
+            "port": 9229,
+            "localRoot": "${workspaceFolder}",
+            "remoteRoot": "${workspaceFolder}/.dev-server/default/node_modules/${workspaceFolderBasename}",
+            "smartStep": true,            
+            "skipFiles": [
+                "<node_internals>/**"
+            ]            
+        },
+        {
+            "name": "Launch normal",
+            "program": "${workspaceFolder}/main.js",
+            "args": ["--instance", "0", "--force", "--logs", "--debug", "node_modules/iobroker.js-controller/controller.js"],
+            "env": {                
+                "NODE_PATH":".dev-server/default/node_modules"
+            },
+            "request": "launch",
+            "stopOnEntry": true,
+            "console": "internalConsole",
+            "outputCapture": "std",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "type": "node"
+        }
+    ]
+}
