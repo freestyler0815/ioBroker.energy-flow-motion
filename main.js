@@ -7,12 +7,14 @@
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
-let intervalId = null;
+
 // Load your modules here, e.g.:
 // const fs = require("fs");
 
 class EnergyFlowMotion extends utils.Adapter {
 
+	intervalId;
+	refreshRate;
 	/**
 	 * @param {Partial<utils.AdapterOptions>} [options={}]
 	 */
@@ -32,34 +34,11 @@ class EnergyFlowMotion extends utils.Adapter {
 	 * Is called when databases are connected and adapter received configuration.
 	 */
 	async onReady() {
-		const refreshRate = parseInt(this.config.updateInterval)*1000;
-		this.log.info('RefreshRate:' + refreshRate);
-		//intervalId = setInterval(this.updateValues,refreshRate);
-		/*
-		intervalId = setInterval( async () => {
-			// @ts-ignore
-			const pvPowerSrc = this.config.pvPowerDataTable;
-			let pvPowerVal = 0;
-			if (pvPowerSrc && Array.isArray(pvPowerSrc)) {
-				for (const p in pvPowerSrc) {
-					const pvPower = pvPowerSrc[p];
-					if (pvPower.pvObjectId) {
-						let pvPowerObjId = pvPower.pvObjectId;
-						let pvPowerFactor = parseFloat(pvPower.pvFactor);
-						try {
-							let pvPowerState = await this.getForeignStateAsync(pvPowerObjId);
-							if (pvPowerState.val != null) {
-								pvPowerVal = parseFloat(pvPowerState.val)*pvPowerFactor;
-							}
-							this.log.info('PvPowerObject: ' + pvPowerObjId + ' , PvPowerFactor:' + pvPowerFactor + ', PvPowerRead:' + pvPowerVal);
-						} catch (error) {
-							this.log.error(error);
-						}
-					}
-				}
-			}
-		},refreshRate);
-		*/
+		this.refreshRate = parseInt(this.config.updateInterval)*1000;
+		this.intervalId = this.setInterval( async () => {
+			await this.updateValues();
+		},this.refreshRate);
+		
 		// Initialize your adapter here
 
 		// The adapters config (in the instance object everything under the attribute "native") is accessible via
@@ -114,34 +93,109 @@ class EnergyFlowMotion extends utils.Adapter {
 		//this.log.info('check group user admin group admin: ' + result);
 
 	}
-	/*
-	async updateValues() {
-		return new Promise(() => {
-			// @ts-ignore
-			const pvPowerSrc = this.config.pvPowerDataTable;
-			let pvPowerVal = 0;
-			if (pvPowerSrc && Array.isArray(pvPowerSrc)) {
-				for (const p in pvPowerSrc) {
-					const pvPower = pvPowerSrc[p];
-					if (pvPower.pvObjectId) {
-						let pvPowerObjId = pvPower.pvObjectId;
-						let pvPowerFactor = pvPower.pvFactor;
-						try {
-							let pvPowerState = await this.getForeignStateAsync(pvPowerObjId);
-							if (pvPowerState.val != null) {
-								pvPowerVal = parseFloat(pvPowerState.val);
-							}
-							this.log.info('PvPowerObject: ' + pvPowerObjId + 'PvPowerRead:' + pvPowerVal);
-						} catch (error) {
-							this.log.error(error);
+	
+	async updateValues() {			
+			this.log.info('RefreshRate:' + this.refreshRate);
+			await this.getPvPowerValues();
+			await this.getLoadPowerValues();
+	}
+	
+	async getPvPowerValues(){
+		const pvPowerSrc = this.config.pvPowerDataTable;
+		let pvPowerVal = 0;
+		if (pvPowerSrc && Array.isArray(pvPowerSrc)) {
+			for (const p in pvPowerSrc) {
+				const pvPower = pvPowerSrc[p];
+				if (pvPower.pvObjectId) {
+					let pvPowerObjId = pvPower.pvObjectId;
+					let pvPowerFactor = parseFloat(pvPower.pvFactor);
+					try {
+						let pvPowerState = await this.getForeignStateAsync(pvPowerObjId);
+						if (pvPowerState.val != null) {
+							pvPowerVal = parseFloat(pvPowerState.val)*pvPowerFactor;
 						}
+						this.log.info('PvPowerObject: ' + pvPowerObjId + ' , PvPowerFactor:' + pvPowerFactor + ', PvPowerRead:' + pvPowerVal);
+					} catch (error) {
+						this.log.error(error);
 					}
 				}
 			}
 		}
 	}
-	*/
 
+	async getLoadPowerValues(){
+		const loadSrc = this.config.loadDataTable;
+		let loadPowerVal = 0;
+		if (loadSrc && Array.isArray(loadSrc)) {
+			for (const p in loadSrc) {
+				const loadPower = loadSrc[p];
+				if (loadPower.loadObjectId) {
+					let loadObjId = loadPower.loadObjectId;
+					let loadPowerFactor = parseFloat(loadPower.loadFactor);
+					try {
+						let loadPowerState = await this.getForeignStateAsync(loadObjId);
+						if (loadPowerState.val != null) {
+							loadPowerVal = parseFloat(loadPowerState.val)*loadPowerFactor;
+						}
+						this.log.info('LoadObject: ' + loadObjId + ' , LoadPowerFactor:' + loadPowerFactor + ', LoadPowerRead:' + loadPowerVal);
+					} catch (error) {
+						this.log.error(error);
+					}
+				}
+			}
+		}
+	}
+
+	//08.02.2024 - Muss noch angepasst werden
+	async getGridPowerValues(){
+		const exportSrc = this.config.exportDataTable;
+		const importSrc = this.config.importDataTable;
+		let loadPowerVal = 0;
+		if (loadSrc && Array.isArray(loadSrc)) {
+			for (const p in loadSrc) {
+				const loadPower = loadSrc[p];
+				if (loadPower.loadObjectId) {
+					let loadObjId = loadPower.loadObjectId;
+					let loadPowerFactor = parseFloat(loadPower.loadFactor);
+					try {
+						let loadPowerState = await this.getForeignStateAsync(loadObjId);
+						if (loadPowerState.val != null) {
+							loadPowerVal = parseFloat(loadPowerState.val)*loadPowerFactor;
+						}
+						this.log.info('LoadObject: ' + loadObjId + ' , LoadPowerFactor:' + loadPowerFactor + ', LoadPowerRead:' + loadPowerVal);
+					} catch (error) {
+						this.log.error(error);
+					}
+				}
+			}
+		}
+	}
+
+	//08.02.2024 - Muss noch angepasst werden
+	async getBatteryPowerValues(){
+		const exportSrc = this.config.batChargeDataTable;
+		const importSrc = this.config.batDischargeDataTable;
+		let loadPowerVal = 0;
+		if (loadSrc && Array.isArray(loadSrc)) {
+			for (const p in loadSrc) {
+				const loadPower = loadSrc[p];
+				if (loadPower.loadObjectId) {
+					let loadObjId = loadPower.loadObjectId;
+					let loadPowerFactor = parseFloat(loadPower.loadFactor);
+					try {
+						let loadPowerState = await this.getForeignStateAsync(loadObjId);
+						if (loadPowerState.val != null) {
+							loadPowerVal = parseFloat(loadPowerState.val)*loadPowerFactor;
+						}
+						this.log.info('LoadObject: ' + loadObjId + ' , LoadPowerFactor:' + loadPowerFactor + ', LoadPowerRead:' + loadPowerVal);
+					} catch (error) {
+						this.log.error(error);
+					}
+				}
+			}
+		}
+	}
+	
 	/**
 	 * Is called when adapter shuts down - callback has to be called under any circumstances!
 	 * @param {() => void} callback
@@ -152,8 +206,8 @@ class EnergyFlowMotion extends utils.Adapter {
 			// clearTimeout(timeout1);
 			// clearTimeout(timeout2);
 			// ...
-			this.log.debug('cleaned everything up...');
-			clearInterval(intervalId);
+			this.log.info('cleaned everything up...');
+			this.clearInterval(this.intervalId);
 
 			callback();
 		} catch (e) {
