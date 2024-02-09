@@ -8,13 +8,13 @@
             "items": {
                 "updateInterval":{
                     "type": "number",
-                    "min": 2,
+                    "min": 1,
                     "max": 10,
                     "sm": 2,
                     "md": 2,
                     "lg": 2,
                     "label": "UpdateInterval",
-                    "help": "Update Interval in seconds (2 to 10s possible)"
+                    "help": "Update Interval in seconds (1 to 10s possible)"
                 },                
                 "importThreshold":{
                         "type": "number",
@@ -74,7 +74,7 @@
                     "items": [
                         {
                             "type": "objectId",
-                            "attr": "pvObjectId",
+                            "attr": "pwrObjectId",
                             "width": "250px",
                             "title": {"en": "ObjectID"},                            
                             "filter": false,
@@ -85,7 +85,7 @@
                             "type": "number",
                             "width": "50px",
                             "title": {"en": "Factor (+/-)"},
-                            "attr": "pvFactor",
+                            "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
                             "default": "1"
@@ -108,7 +108,7 @@
                             "type": "objectId",
                             "width": "250px",
                             "title": {"en": "ObjectID"},
-                            "attr": "loadObjectId",
+                            "attr": "pwrObjectId",
                             "filter": false,
                             "sort": true,
                             "default": ""
@@ -117,7 +117,7 @@
                             "type": "number",
                             "width": "50px",
                             "title": {"en": "Factor (+/-)"},
-                            "attr": "loadFactor",
+                            "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
                             "default": "1"
@@ -139,7 +139,7 @@
                             "type": "objectId",
                             "width": "250px",
                             "title": {"en": "ObjectID"},
-                            "attr": "exportObjectId",
+                            "attr": "pwrObjectId",
                             "filter": false,
                             "sort": true,
                             "default": ""
@@ -148,7 +148,7 @@
                             "type": "number",
                             "width": "50px",
                             "title": {"en": "Factor (+/-)"},
-                            "attr": "exportFactor",
+                            "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
                             "default": "1"
@@ -165,7 +165,7 @@
                             "type": "objectId",
                             "width": "250px",
                             "title": {"en": "ObjectID"},
-                            "attr": "importObjectId",
+                            "attr": "pwrObjectId",
                             "filter": false,
                             "sort": true,
                             "default": ""
@@ -174,7 +174,7 @@
                             "type": "number",
                             "width": "50px",
                             "title": {"en": "Factor (+/-)"},
-                            "attr": "importFactor",
+                            "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
                             "default": "1"
@@ -196,7 +196,7 @@
                             "type": "objectId",
                             "width": "250px",
                             "title": {"en": "ObjectID"},
-                            "attr": "batChargeObjectId",
+                            "attr": "pwrObjectId",
                             "filter": false,
                             "sort": true,
                             "default": ""
@@ -205,7 +205,7 @@
                             "type": "number",
                             "width": "50px",
                             "title": {"en": "Factor (+/-)"},
-                            "attr": "batChargeFactor",
+                            "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
                             "default": "1"
@@ -222,7 +222,7 @@
                             "type": "objectId",
                             "width": "250px",
                             "title": {"en": "ObjectID"},
-                            "attr": "batDischargeObjectId",
+                            "attr": "pwrObjectId",
                             "filter": false,
                             "sort": true,
                             "default": ""
@@ -231,7 +231,7 @@
                             "type": "number",
                             "width": "50px",
                             "title": {"en": "Factor (+/-)"},
-                            "attr": "batDischargeFactor",
+                            "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
                             "default": "1"

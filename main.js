@@ -35,6 +35,7 @@ class EnergyFlowMotion extends utils.Adapter {
 	 */
 	async onReady() {
 		this.refreshRate = parseInt(this.config.updateInterval)*1000;
+		await this.updateValues();
 		this.intervalId = this.setInterval( async () => {
 			await this.updateValues();
 		},this.refreshRate);
@@ -96,104 +97,84 @@ class EnergyFlowMotion extends utils.Adapter {
 	
 	async updateValues() {			
 			this.log.info('RefreshRate:' + this.refreshRate);
-			await this.getPvPowerValues();
-			await this.getLoadPowerValues();
-	}
-	
-	async getPvPowerValues(){
-		const pvPowerSrc = this.config.pvPowerDataTable;
-		let pvPowerVal = 0;
-		if (pvPowerSrc && Array.isArray(pvPowerSrc)) {
-			for (const p in pvPowerSrc) {
-				const pvPower = pvPowerSrc[p];
-				if (pvPower.pvObjectId) {
-					let pvPowerObjId = pvPower.pvObjectId;
-					let pvPowerFactor = parseFloat(pvPower.pvFactor);
-					try {
-						let pvPowerState = await this.getForeignStateAsync(pvPowerObjId);
-						if (pvPowerState.val != null) {
-							pvPowerVal = parseFloat(pvPowerState.val)*pvPowerFactor;
-						}
-						this.log.info('PvPowerObject: ' + pvPowerObjId + ' , PvPowerFactor:' + pvPowerFactor + ', PvPowerRead:' + pvPowerVal);
-					} catch (error) {
-						this.log.error(error);
-					}
-				}
-			}
-		}
+			let pvPwrValue = 0, loadPwrValur = 0, exportPwrValue = 0, importPwrValue = 0, batChargePwrValue = 0, batDischargePwrValue = 0;
+			pvPwrValue = await this.getPvPowerSumValue();
+			loadPwrValur = await this.getLoadPowerSumValue();
+			exportPwrValue = await this.getGridImportPowerSumValue();
+			importPwrValue = await this.getGridExportPowerSumValue();
+			batChargePwrValue = await this.getBatteryChargePowerSumValue();
+			batDischargePwrValue = await this.getBatteryDischargePowerSumValue();
+			//this.log.info('Namespace: ' + this.namespace);
+			await this.setStateAsync(this.namespace + '.power.pvpower', {val: pvPwrValue, ack: true});
+			await this.setStateAsync(this.namespace + '.power.load', {val: loadPwrValur, ack: true});
+			await this.setStateAsync(this.namespace + '.power.export', {val: exportPwrValue, ack: true});
+			await this.setStateAsync(this.namespace + '.power.import', {val: importPwrValue, ack: true});
+			await this.setStateAsync(this.namespace + '.power.batteryCharge', {val: batChargePwrValue, ack: true});
+			await this.setStateAsync(this.namespace + '.power.batteryDischarge', {val: batDischargePwrValue, ack: true});
+
 	}
 
-	async getLoadPowerValues(){
-		const loadSrc = this.config.loadDataTable;
-		let loadPowerVal = 0;
-		if (loadSrc && Array.isArray(loadSrc)) {
-			for (const p in loadSrc) {
-				const loadPower = loadSrc[p];
-				if (loadPower.loadObjectId) {
-					let loadObjId = loadPower.loadObjectId;
-					let loadPowerFactor = parseFloat(loadPower.loadFactor);
-					try {
-						let loadPowerState = await this.getForeignStateAsync(loadObjId);
-						if (loadPowerState.val != null) {
-							loadPowerVal = parseFloat(loadPowerState.val)*loadPowerFactor;
-						}
-						this.log.info('LoadObject: ' + loadObjId + ' , LoadPowerFactor:' + loadPowerFactor + ', LoadPowerRead:' + loadPowerVal);
-					} catch (error) {
-						this.log.error(error);
-					}
-				}
-			}
-		}
+	async getPvPowerSumValue(){
+		let pwrValue = await this.getSumValuesFromCfgTables(this.config.pvPowerDataTable);
+		this.log.info('PvPowerSum: ' + pwrValue + ' kW');
+		return pwrValue;
 	}
 
-	//08.02.2024 - Muss noch angepasst werden
-	async getGridPowerValues(){
-		const exportSrc = this.config.exportDataTable;
-		const importSrc = this.config.importDataTable;
-		let loadPowerVal = 0;
-		if (loadSrc && Array.isArray(loadSrc)) {
-			for (const p in loadSrc) {
-				const loadPower = loadSrc[p];
-				if (loadPower.loadObjectId) {
-					let loadObjId = loadPower.loadObjectId;
-					let loadPowerFactor = parseFloat(loadPower.loadFactor);
-					try {
-						let loadPowerState = await this.getForeignStateAsync(loadObjId);
-						if (loadPowerState.val != null) {
-							loadPowerVal = parseFloat(loadPowerState.val)*loadPowerFactor;
-						}
-						this.log.info('LoadObject: ' + loadObjId + ' , LoadPowerFactor:' + loadPowerFactor + ', LoadPowerRead:' + loadPowerVal);
-					} catch (error) {
-						this.log.error(error);
-					}
-				}
-			}
-		}
+	async getLoadPowerSumValue(){
+		let pwrValue = await this.getSumValuesFromCfgTables(this.config.loadDataTable);
+		this.log.info('LoadPowerSum: ' + pwrValue + ' kW');
+		return pwrValue;
 	}
 
-	//08.02.2024 - Muss noch angepasst werden
-	async getBatteryPowerValues(){
-		const exportSrc = this.config.batChargeDataTable;
-		const importSrc = this.config.batDischargeDataTable;
-		let loadPowerVal = 0;
-		if (loadSrc && Array.isArray(loadSrc)) {
-			for (const p in loadSrc) {
-				const loadPower = loadSrc[p];
-				if (loadPower.loadObjectId) {
-					let loadObjId = loadPower.loadObjectId;
-					let loadPowerFactor = parseFloat(loadPower.loadFactor);
+	async getGridImportPowerSumValue(){
+		let pwrValue = await this.getSumValuesFromCfgTables(this.config.importDataTable);
+		this.log.info('ImportPowerSum: ' + pwrValue + ' kW');
+		return pwrValue;
+	}
+
+	async getGridExportPowerSumValue(){
+		let pwrValue = await this.getSumValuesFromCfgTables(this.config.exportDataTable);
+		this.log.info('ExportPowerSum: ' + pwrValue + ' kW');
+		return pwrValue;
+	}
+
+	async getBatteryChargePowerSumValue(){
+		let pwrValue = await this.getSumValuesFromCfgTables(this.config.batChargeDataTable);
+		this.log.info('BatChargePowerSum: ' + pwrValue + ' kW');
+		return pwrValue;
+	}
+
+	async getBatteryDischargePowerSumValue(){
+		let pwrValue = await this.getSumValuesFromCfgTables(this.config.batDischargeDataTable);
+		this.log.info('BatDischargePowerSum: ' + pwrValue + ' kW');
+		return pwrValue;
+	}
+
+	async getSumValuesFromCfgTables(cfgTable){
+		let pwrValue = 0;
+		if (cfgTable && Array.isArray(cfgTable)) {
+			//this.log.info('Is Array');
+			for (const p in cfgTable) {
+				const cfgTableEntry = cfgTable[p];
+				//this.log.info('Entry Selected');
+				if (cfgTableEntry.pwrObjectId) {
+					let pwrObjId = cfgTableEntry.pwrObjectId;
+					let pwrFactor = parseFloat(cfgTableEntry.pwrFactor);
+					//this.log.info('Entry Read');
 					try {
-						let loadPowerState = await this.getForeignStateAsync(loadObjId);
-						if (loadPowerState.val != null) {
-							loadPowerVal = parseFloat(loadPowerState.val)*loadPowerFactor;
-						}
-						this.log.info('LoadObject: ' + loadObjId + ' , LoadPowerFactor:' + loadPowerFactor + ', LoadPowerRead:' + loadPowerVal);
+						let powerState = await this.getForeignStateAsync(pwrObjId);
+						if (powerState.val != null) {
+							pwrValue += parseFloat(powerState.val)*pwrFactor;
+							//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
+						}						
 					} catch (error) {
 						this.log.error(error);
 					}
 				}
 			}
+			//this.log.info('ConfigTable: ' + cfgTable + ' , SumPowerRead:' + pwrValue);
 		}
+		return pwrValue;
 	}
 	
 	/**
