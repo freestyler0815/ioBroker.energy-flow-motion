@@ -96,57 +96,57 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 	
 	async updateValues() {			
-			this.log.info('RefreshRate:' + this.refreshRate);
-			let pvPwrValue = 0, loadPwrValur = 0, exportPwrValue = 0, importPwrValue = 0, batChargePwrValue = 0, batDischargePwrValue = 0;
-			pvPwrValue = await this.getPvPowerSumValue();
-			loadPwrValur = await this.getLoadPowerSumValue();
-			exportPwrValue = await this.getGridImportPowerSumValue();
-			importPwrValue = await this.getGridExportPowerSumValue();
-			batChargePwrValue = await this.getBatteryChargePowerSumValue();
-			batDischargePwrValue = await this.getBatteryDischargePowerSumValue();
-			//this.log.info('Namespace: ' + this.namespace);
-			await this.setStateAsync(this.namespace + '.power.pvpower', {val: pvPwrValue, ack: true});
-			await this.setStateAsync(this.namespace + '.power.load', {val: loadPwrValur, ack: true});
-			await this.setStateAsync(this.namespace + '.power.export', {val: exportPwrValue, ack: true});
-			await this.setStateAsync(this.namespace + '.power.import', {val: importPwrValue, ack: true});
-			await this.setStateAsync(this.namespace + '.power.batteryCharge', {val: batChargePwrValue, ack: true});
-			await this.setStateAsync(this.namespace + '.power.batteryDischarge', {val: batDischargePwrValue, ack: true});
-
+		//this.log.info('RefreshRate:' + this.refreshRate);
+		let pvPwrValue = 0, loadPwrValur = 0, exportPwrValue = 0, importPwrValue = 0, batChargePwrValue = 0, batDischargePwrValue = 0;
+		pvPwrValue = await this.getPvPowerSumValue();
+		loadPwrValur = await this.getLoadPowerSumValue();
+		exportPwrValue = await this.getGridExportPowerSumValue();
+		importPwrValue = await this.getGridImportPowerSumValue();
+		batChargePwrValue = await this.getBatteryChargePowerSumValue();
+		batDischargePwrValue = await this.getBatteryDischargePowerSumValue();
+		//this.log.info('Namespace: ' + this.namespace);
+		await this.setStateAsync(this.namespace + '.power.pvpower', {val: pvPwrValue, ack: true});
+		await this.setStateAsync(this.namespace + '.power.load', {val: loadPwrValur, ack: true});
+		await this.setStateAsync(this.namespace + '.power.export', {val: exportPwrValue, ack: true});
+		await this.setStateAsync(this.namespace + '.power.import', {val: importPwrValue, ack: true});
+		await this.setStateAsync(this.namespace + '.power.batteryCharge', {val: batChargePwrValue, ack: true});
+		await this.setStateAsync(this.namespace + '.power.batteryDischarge', {val: batDischargePwrValue, ack: true});
+		await this.efmCalcEnergyHistory(pvPwrValue,loadPwrValur,exportPwrValue,importPwrValue,batChargePwrValue,batDischargePwrValue);
 	}
 
 	async getPvPowerSumValue(){
 		let pwrValue = await this.getSumValuesFromCfgTables(this.config.pvPowerDataTable);
-		this.log.info('PvPowerSum: ' + pwrValue + ' kW');
+		this.log.debug('PvPowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getLoadPowerSumValue(){
 		let pwrValue = await this.getSumValuesFromCfgTables(this.config.loadDataTable);
-		this.log.info('LoadPowerSum: ' + pwrValue + ' kW');
+		this.log.debug('LoadPowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getGridImportPowerSumValue(){
 		let pwrValue = await this.getSumValuesFromCfgTables(this.config.importDataTable);
-		this.log.info('ImportPowerSum: ' + pwrValue + ' kW');
+		this.log.debug('ImportPowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getGridExportPowerSumValue(){
 		let pwrValue = await this.getSumValuesFromCfgTables(this.config.exportDataTable);
-		this.log.info('ExportPowerSum: ' + pwrValue + ' kW');
+		this.log.debug('ExportPowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getBatteryChargePowerSumValue(){
 		let pwrValue = await this.getSumValuesFromCfgTables(this.config.batChargeDataTable);
-		this.log.info('BatChargePowerSum: ' + pwrValue + ' kW');
+		this.log.debug('BatChargePowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getBatteryDischargePowerSumValue(){
 		let pwrValue = await this.getSumValuesFromCfgTables(this.config.batDischargeDataTable);
-		this.log.info('BatDischargePowerSum: ' + pwrValue + ' kW');
+		this.log.debug('BatDischargePowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
@@ -176,6 +176,268 @@ class EnergyFlowMotion extends utils.Adapter {
 		}
 		return pwrValue;
 	}
+
+	async getEnergyCounterTimePeriod() {
+		var sEfmPathTimePeriod = ["day"];
+		if (this.config.energyCounterMonthActive) {
+			sEfmPathTimePeriod.push("month");
+		}
+		if (this.config.energyCounterYearActive) {
+			sEfmPathTimePeriod.push("year");
+		}
+		return sEfmPathTimePeriod;		
+	}
+
+	async getValueIDs() {
+		const sEfmValueIDs = new Array("date","load","pv","export","import","selfConsumption","batteryDischarge","batteryCharge","selfConsumptionQuota","autarchyQuota");
+		return sEfmValueIDs;
+	}
+
+	async getEnergyPathLive() {
+		var sPathEnergyValues = this.namespace + '.energy.live';
+		return sPathEnergyValues;
+	}
+
+	async getEnergyPathHistory() {
+		var sPathEnergyValues = this.namespace + '.energy.history';
+		return sPathEnergyValues;
+	}
+
+	async efmCalcEnergyHistory (pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge)  {				
+		// aktuelle Energiezählerstände einlesen
+		var vEfmValues = await this.readValues();
+		// Zählerstandhistorie managen (Tageswechsel etc. historische Zählerstände neu schreiben)
+		vEfmValues = await this.historyManage(vEfmValues);
+		// aktuelle Zählerstände berechnen
+		var vEfmCalcValues = await this.calcValues(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge,vEfmValues);
+		// Zählerstände in States schreiben
+		await this.writeValues(vEfmCalcValues);
+	}
+
+	async readValues() {
+		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
+		const sPathEnergyValues = await this.getEnergyPathLive();	
+		let iPathArrayLen = pEfmPathTimePeriod.length;
+		var vEfmValues = [[],[],[]];
+		var sEfmCurrPath = '';
+		const sEfmValueIDs = await this.getValueIDs();
+		let iValueIDsArrayLen = sEfmValueIDs.length;
+		// Alle aktuellen Werte abrufen
+		for (var x = 0; x < iPathArrayLen; x++) {
+			sEfmCurrPath = sPathEnergyValues + '.' + pEfmPathTimePeriod[x] + '.';
+			this.log.debug('Path for loading Values:' + sEfmCurrPath);
+			for (var y = 0; y < iValueIDsArrayLen; y++) {        
+				this.log.debug('Path for Value:' + sEfmCurrPath + sEfmValueIDs[y]);
+				try {
+					let stateObject = await this.getStateAsync(sEfmCurrPath + sEfmValueIDs[y]);
+					if (stateObject.val != null) {
+						if (sEfmValueIDs[y] == 'date') {
+							vEfmValues[x][y] = new Date (stateObject.val);
+						} else {
+							vEfmValues[x][y] = stateObject.val;
+						};											
+						//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
+					}						
+				} catch (error) {
+					this.log.error(error);
+				}				
+				//if (stateObject) {
+
+				//if (vEfmValues[x][y] == 0) { !! An dieser Stelle nur die kWh Load und Import Werte abfragen
+				//  log('Read value is 0 :' + sEfmCurrPath + sEfmValueIDs[y], 'warn');  
+				//}
+				//} else {
+				//  vEfmValues[x][y] = 0;
+				//  log('Unable to get state value of ' + sEfmCurrPath + sEfmValueIDs[y] + '. ' + JSON.stringify(stateObject), 'warn');
+				//};
+			};
+		};
+		return vEfmValues;
+	};
+
+	async historyManage(pEfmValues) {		
+		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();		
+		let iPathArrayLen = pEfmPathTimePeriod.length;
+		const sEfmValueIDs = await this.getValueIDs();
+		const sEnergyPathHistory = await this.getEnergyPathHistory();
+		let iValueIDsArrayLen = sEfmValueIDs.length;
+		var sEfmCurrPath = '';
+		var newDate;
+		var vCalcDate = [];
+		var now = [];	
+		newDate = new Date();
+		newDate.setHours(0,0,30,0);
+		// Aktuelle Werte für den Datumsvergleich setzen	
+		for (var xa = 0; xa < iPathArrayLen; xa++) {
+			now[xa] = new Date();
+			//now[xa].setHours(0,0,30,0);
+		}			
+		for (var xb = 0; xb < iPathArrayLen; xb++) {
+			vCalcDate[xb] = new Date (pEfmValues[xb][0].valueOf());
+			//vCalcDate[xb] = new Date (JSON.parse(pEfmValues[xb][0]));
+		}
+		vCalcDate[0].setDate(vCalcDate[0].getDate() + 1);
+		if (this.config.energyCounterMonthActive) {			
+			now[1].setDate(1);
+			vCalcDate[1].setDate(1);
+			vCalcDate[1].setMonth(vCalcDate[1].getMonth() + 1);			
+		}
+		if (this.config.energyCounterYearActive) {
+			now[2].setDate(1);
+			now[2].setMonth(0);
+			vCalcDate[2].setDate(1);
+			vCalcDate[2].setMonth(0);
+			vCalcDate[2].setFullYear(vCalcDate[2].getFullYear() + 1);			
+		}	
+
+		/*
+		log('Value of now: ' + now.toString(),'info');
+		log('Value of vCalcDate: ' + vCalcDate.toString(),'info');
+		log('Value of nowMonth: ' + nowMonth.toString(),'info');
+		log('Value of vCalcMonth: ' + vCalcMonth.toString(),'info');
+		log('Value of nowYear: ' + nowYear.toString(),'info');
+		log('Value of vCalcYear: ' + vCalcYear.toString(),'info');
+		*/
+
+		// Reset Counters and write History
+		for (var xc = 0; xc < iPathArrayLen; xc++) {
+			sEfmCurrPath = sEnergyPathHistory + '.' + pEfmPathTimePeriod[xc] + '.';
+			if (now[xc].valueOf() >= vCalcDate[xc].valueOf()) {
+				this.log.debug('now[' + xc.toString() + '] and vCalcDate[' + xc.toString() + ']: ' + now[xc].toString() + ' and ' + vCalcDate[xc].toString());
+				for (var yc = 0; yc < iValueIDsArrayLen; yc++) {            
+					if (sEfmValueIDs[yc] == 'date') {
+						this.log.debug('sEfmCurrPath: ' + sEfmCurrPath + sEfmValueIDs[yc] + ' sEfmValueIDs[' + yc.toString() +']:' + sEfmValueIDs[yc] + 'Value: ' + pEfmValues[xc][yc].valueOf());
+						try {
+							//await this.setStateAsync(sEfmCurrPath + sEfmValueIDs[yc],JSON.stringify(pEfmValues[xc][yc]),true);
+							await this.setStateAsync(sEfmCurrPath + sEfmValueIDs[yc],pEfmValues[xc][yc].valueOf(),true);
+						} 
+						catch(error) {
+							this.log.error(error);
+						}						
+						
+					} else {
+						this.log.debug('sEfmCurrPath: ' + sEfmCurrPath + sEfmValueIDs[yc] + ' sEfmValueIDs[' + yc.toString() +']:' + sEfmValueIDs[yc] + 'Value: ' + pEfmValues[xc][yc]);
+						try {
+							await this.setStateAsync(sEfmCurrPath + sEfmValueIDs[yc],pEfmValues[xc][yc],true);
+						}
+						catch(error) {
+							this.log.error(error);
+						}						
+					}            
+					if (sEfmValueIDs[yc] == 'date') {
+						pEfmValues[xc][yc] = newDate;
+						this.log.debug('sEfmCurrPath: ' + sEfmCurrPath + sEfmValueIDs[yc] + ' sEfmValueIDs[' + yc.toString() +']:' + sEfmValueIDs[yc] + 'Value: ' + pEfmValues[xc][yc].toString());
+					} else {
+					pEfmValues[xc][yc] = 0;
+					};
+				};
+				this.log.debug('Reset ' + pEfmPathTimePeriod[xc] + ' Counter executed');
+			};
+		};
+		return pEfmValues;
+	};
+
+	async calcValues(p1FloatPvPower, p1FloatLoad, p1FloatExport, p1FloatImport, p1FloatBatCharge, p1FloatBatDischarge, pEfmValues) {
+		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
+		const iPathArrayLen = pEfmPathTimePeriod.length;
+		const sEfmValueIDs = await this.getValueIDs();		
+		const iValueIDsArrayLen = sEfmValueIDs.length;
+		var vEfmCalcValues = [[],[],[]];	
+		var vEnergyDivisor = 0;
+		var updateRate = this.config.updateInterval;
+		if ((updateRate == 0) || (updateRate == null)) {
+			updateRate = 2;
+		};
+		vEnergyDivisor = 3600 / updateRate;
+		// Werte berechnen
+		for (var xd = 0; xd < iPathArrayLen; xd++) {
+			for (var yd = 0; yd < iValueIDsArrayLen; yd++) {
+				switch(sEfmValueIDs[yd]) {
+					case 'date':
+					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd].valueOf();
+					break;
+					case 'load':
+					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatLoad / vEnergyDivisor);
+					break;
+					case 'pv':
+					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatPvPower / vEnergyDivisor);
+					break;
+					case 'export':
+					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatExport / vEnergyDivisor);
+					break;
+					case 'import':
+					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatImport/ vEnergyDivisor);
+					break;
+					case 'selfConsumption':
+					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + ((p1FloatPvPower - p1FloatExport) / vEnergyDivisor);
+					if (vEfmCalcValues[xd][yd] < 0) {
+						vEfmCalcValues[xd][yd] = 0;
+					};
+					break;
+					case 'batteryDischarge':
+					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatBatDischarge / vEnergyDivisor);
+					break;
+					case 'batteryCharge':
+					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatBatCharge / vEnergyDivisor);
+					break;
+					case 'selfConsumptionQuota':
+					if (pEfmValues[xd][2] == 0 ) {
+						vEfmCalcValues[xd][yd] = 0;
+					} else {
+						vEfmCalcValues[xd][yd] = (pEfmValues[xd][5] / pEfmValues[xd][2] * 100);
+						if (vEfmCalcValues[xd][yd] > 100) {
+							vEfmCalcValues[xd][yd] = 100;
+						};
+						if (vEfmCalcValues[xd][yd] < 0) {
+							vEfmCalcValues[xd][yd] = 0;
+						};
+					};
+					break;
+					case 'autarchyQuota':
+					if (pEfmValues[xd][1] == 0){
+						vEfmCalcValues[xd][yd] = 100;
+					} else {
+						vEfmCalcValues[xd][yd] = (100 - (pEfmValues[xd][4] / pEfmValues[xd][1] * 100));
+						if (vEfmCalcValues[xd][yd] > 100) {
+							vEfmCalcValues[xd][yd] = 100;
+						};
+						if (vEfmCalcValues[xd][yd] < 0) {
+							vEfmCalcValues[xd][yd] = 0;
+						};
+					};
+					break;
+				};
+				this.log.debug('ValueID: ' + sEfmValueIDs[yd] + ' (sEfmValueIDs[' + yd.toString() +']) Value: ' + pEfmValues[xd][yd].valueOf());				
+			};
+		};
+		this.log.debug("calcvalues executed");
+		return vEfmCalcValues;
+	};
+
+	async writeValues(pEfmCalcValues) {
+		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
+		const iPathArrayLen = pEfmPathTimePeriod.length;
+		const sEfmValueIDs = await this.getValueIDs();		
+		const iValueIDsArrayLen = sEfmValueIDs.length;		
+		const sEnergyPathLive = await this.getEnergyPathLive();
+		let sEfmCurrPath = '';
+		// Werte schreiben
+		for (var xe = 0; xe < iPathArrayLen; xe++) {
+			sEfmCurrPath = sEnergyPathLive + '.' + pEfmPathTimePeriod[xe] + '.';
+			for (var ye = 0; ye < iValueIDsArrayLen; ye++) {
+				try {
+					await this.setStateAsync(sEfmCurrPath + sEfmValueIDs[ye],pEfmCalcValues[xe][ye],true);
+				}
+				catch(error) {
+					this.log.error(error + ' ValueID: ' + sEfmValueIDs[ye] + ' Value: ' + pEfmCalcValues[xe][ye]);
+				}
+			};
+		};
+		this.log.debug("writevalues executed");
+	};
+
+
+	
 	
 	/**
 	 * Is called when adapter shuts down - callback has to be called under any circumstances!

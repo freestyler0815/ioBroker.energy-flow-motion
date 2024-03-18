@@ -61,7 +61,25 @@
                     "lg": 1,
                     "label": "BatteryExists",
                     "help": "Check if a battery exists"
-                }
+                },
+                "energyCounterMonthActive":{
+                    "newLine": true,
+                    "type": "checkbox",
+                    "sm": 2,
+                    "md": 1,
+                    "lg": 1,
+                    "label": "Energy Counter Month Active",
+                    "help": "Activate monthly Energy Counter"
+                },
+                "energyCounterYearActive":{
+                    "newLine": true,
+                    "type": "checkbox",
+                    "sm": 2,
+                    "md": 1,
+                    "lg": 1,
+                    "label": "Energy Counter Year Active",
+                    "help": "Activate yearly Energy Counter"
+                }            
             }
         },
         "_pvPowerData":{

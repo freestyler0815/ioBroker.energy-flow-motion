@@ -204,19 +204,27 @@
 			"native": ""
 		},
 		{
-			"_id": "energy.today",
+			"_id": "energy.live",
 			"type": "channel",
 			"common": {
-				"name": "Energy Values Today"
+				"name": "Energy Values live"
 			},
 			"native": ""
 		},
 		{
-			"_id": "energy.today.load",
+			"_id": "energy.live.day",
+			"type": "channel",
+			"common": {
+				"name": "Energy Values Live Today"
+			},
+			"native": ""
+		},
+		{
+			"_id": "energy.live.day.load",
 			"type": "state",
 			"common": {
 				"role": "value",
-				"name": "Load",
+				"name": "Load Energy",
 				"type": "number",
 				"read": true,
 				"write": false,
@@ -226,11 +234,11 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.today.pvpower",
+			"_id": "energy.live.day.pv",
 			"type": "state",
 			"common": {
 				"role": "value",
-				"name": "PV Power",
+				"name": "PV",
 				"type": "number",
 				"read": true,
 				"write": false,
@@ -240,7 +248,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.today.export",
+			"_id": "energy.live.day.export",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -254,7 +262,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.today.import",
+			"_id": "energy.live.day.import",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -268,7 +276,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.today.batteryCharge",
+			"_id": "energy.live.day.batteryCharge",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -282,7 +290,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.today.batteryDischarge",
+			"_id": "energy.live.day.batteryDischarge",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -296,7 +304,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.today.selfConsumption",
+			"_id": "energy.live.day.selfConsumption",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -310,7 +318,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.today.date",
+			"_id": "energy.live.day.date",
 			"type": "state",
 			"common": {
 				"role": "value.time",
@@ -321,13 +329,13 @@
 				"def": 0				
 			},
 			"native": {
-				"type": "object",
+				"type": "number",
 				"name": "Datum",
 				"role": "date"
 			}
 		},
 		{
-			"_id": "energy.today.selfConsumptionQuota",
+			"_id": "energy.live.day.selfConsumptionQuota",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -341,7 +349,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.today.autarchyQuota",
+			"_id": "energy.live.day.autarchyQuota",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -355,19 +363,19 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.yesterday",
+			"_id": "energy.live.month",
 			"type": "channel",
 			"common": {
-				"name": "Energy Values Yesterday"
+				"name": "Energy Values Live Month"
 			},
 			"native": ""
 		},
 		{
-			"_id": "energy.yesterday.load",
+			"_id": "energy.live.month.load",
 			"type": "state",
 			"common": {
 				"role": "value",
-				"name": "Load",
+				"name": "Load Energy",
 				"type": "number",
 				"read": true,
 				"write": false,
@@ -377,11 +385,11 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.yesterday.pvpower",
+			"_id": "energy.live.month.pv",
 			"type": "state",
 			"common": {
 				"role": "value",
-				"name": "PV Power",
+				"name": "PV",
 				"type": "number",
 				"read": true,
 				"write": false,
@@ -391,7 +399,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.yesterday.export",
+			"_id": "energy.live.month.export",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -405,7 +413,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.yesterday.import",
+			"_id": "energy.live.month.import",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -419,7 +427,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.yesterday.batteryCharge",
+			"_id": "energy.live.month.batteryCharge",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -433,7 +441,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.yesterday.batteryDischarge",
+			"_id": "energy.live.month.batteryDischarge",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -447,7 +455,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.yesterday.selfConsumption",
+			"_id": "energy.live.month.selfConsumption",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -461,7 +469,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.yesterday.date",
+			"_id": "energy.live.month.date",
 			"type": "state",
 			"common": {
 				"role": "value.time",
@@ -472,13 +480,13 @@
 				"def": 0				
 			},
 			"native": {
-				"type": "object",
+				"type": "number",
 				"name": "Datum",
 				"role": "date"
 			}
 		},
 		{
-			"_id": "energy.yesterday.selfConsumptionQuota",
+			"_id": "energy.live.month.selfConsumptionQuota",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -492,7 +500,7 @@
 			"native": {}
 		},
 		{
-			"_id": "energy.yesterday.autarchyQuota",
+			"_id": "energy.live.month.autarchyQuota",
 			"type": "state",
 			"common": {
 				"role": "value",
@@ -504,6 +512,618 @@
 				"unit": "%"
 			},
 			"native": {}
-		}
+		},
+		{
+			"_id": "energy.live.year",
+			"type": "channel",
+			"common": {
+				"name": "Energy Values Live Year"
+			},
+			"native": ""
+		},
+		{
+			"_id": "energy.live.year.load",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Load Energy",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.live.year.pv",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "PV",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.live.year.export",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Export",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.live.year.import",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Import",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.live.year.batteryCharge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Charge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.live.year.batteryDischarge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Discharge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.live.year.selfConsumption",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Self Consumption",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.live.year.date",
+			"type": "state",
+			"common": {
+				"role": "value.time",
+				"name": "Date",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0				
+			},
+			"native": {
+				"type": "number",
+				"name": "Datum",
+				"role": "date"
+			}
+		},
+		{
+			"_id": "energy.live.year.selfConsumptionQuota",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Self Consumption Quota",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.live.year.autarchyQuota",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Autarchy Quota",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		},				
+		{
+			"_id": "energy.history",
+			"type": "channel",
+			"common": {
+				"name": "Energy Values History"
+			},
+			"native": ""
+		},
+		{
+			"_id": "energy.history.day",
+			"type": "channel",
+			"common": {
+				"name": "Energy Values History Yesterday"
+			},
+			"native": ""
+		},
+		{
+			"_id": "energy.history.day.load",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Load",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.day.pv",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "PV",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.day.export",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Export",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.day.import",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Import",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.day.batteryCharge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Charge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.day.batteryDischarge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Discharge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.day.selfConsumption",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Self Consumption",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.day.date",
+			"type": "state",
+			"common": {
+				"role": "value.time",
+				"name": "Date",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0				
+			},
+			"native": {
+				"type": "number",
+				"name": "Datum",
+				"role": "date"
+			}
+		},
+		{
+			"_id": "energy.history.day.selfConsumptionQuota",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Self Consumption Quota",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.day.autarchyQuota",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Autarchy Quota",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.month",
+			"type": "channel",
+			"common": {
+				"name": "Energy Values History Last Month"
+			},
+			"native": ""
+		},
+		{
+			"_id": "energy.history.month.load",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Load",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.month.pv",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "PV",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.month.export",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Export",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.month.import",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Import",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.month.batteryCharge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Charge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.month.batteryDischarge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Discharge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.month.selfConsumption",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Self Consumption",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.month.date",
+			"type": "state",
+			"common": {
+				"role": "value.time",
+				"name": "Date",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0				
+			},
+			"native": {
+				"type": "number",
+				"name": "Datum",
+				"role": "date"
+			}
+		},
+		{
+			"_id": "energy.history.month.selfConsumptionQuota",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Self Consumption Quota",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.month.autarchyQuota",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Autarchy Quota",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.year",
+			"type": "channel",
+			"common": {
+				"name": "Energy Values History Last Year"
+			},
+			"native": ""
+		},
+		{
+			"_id": "energy.history.year.load",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Load",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.year.pv",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "PV",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.year.export",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Export",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.year.import",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Grid Import",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.year.batteryCharge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Charge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.year.batteryDischarge",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Battery Discharge",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.year.selfConsumption",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Self Consumption",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kWh"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.year.date",
+			"type": "state",
+			"common": {
+				"role": "value.time",
+				"name": "Date",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0				
+			},
+			"native": {
+				"type": "number",
+				"name": "Datum",
+				"role": "date"
+			}
+		},
+		{
+			"_id": "energy.history.year.selfConsumptionQuota",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Self Consumption Quota",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energy.history.year.autarchyQuota",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Autarchy Quota",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "%"
+			},
+			"native": {}
+		}				
 	]
 }
