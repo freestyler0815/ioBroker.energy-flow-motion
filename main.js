@@ -13,8 +13,9 @@ const utils = require('@iobroker/adapter-core');
 
 class EnergyFlowMotion extends utils.Adapter {
 
-	intervalId;
+	intervalId; 
 	refreshRate;
+
 	/**
 	 * @param {Partial<utils.AdapterOptions>} [options={}]
 	 */
@@ -184,11 +185,9 @@ class EnergyFlowMotion extends utils.Adapter {
 						let powerState = await this.getForeignStateAsync(pwrObjId);
 						if (powerState.val != null) {
 							if ((parseFloat(powerState.val)*pwrFactor) < 0) {
-								this.log.debug('Value for ' + cfgTableEntry.pwrObjectId + ' is negative (Calculated Value is: ' + parseFloat(powerState.val)*pwrFactor +') setting Value to zero.');
-								pwrValue += 0;
-							} else {
-								pwrValue += parseFloat(powerState.val)*pwrFactor;
-							}							
+								this.log.debug('Value for ' + cfgTableEntry.pwrObjectId + ' is negative (Calculated Value is: ' + parseFloat(powerState.val)*pwrFactor +') setting Value to zero.');								
+							} 
+							pwrValue += parseFloat(powerState.val)*pwrFactor;														
 							//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
 						}						
 					} catch (error) {
@@ -198,7 +197,12 @@ class EnergyFlowMotion extends utils.Adapter {
 			}
 			//this.log.info('ConfigTable: ' + cfgTable + ' , SumPowerRead:' + pwrValue);
 		}		
-		return pwrValue;
+		if (pwrValue < 0) {
+			return 0
+		} 
+		else {
+			return pwrValue;
+		}		
 	}
 
 	async getEnergyCounterTimePeriod() {
