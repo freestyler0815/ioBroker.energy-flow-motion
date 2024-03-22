@@ -104,6 +104,25 @@ class EnergyFlowMotion extends utils.Adapter {
 		importPwrValue = await this.getGridImportPowerSumValue();
 		batChargePwrValue = await this.getBatteryChargePowerSumValue();
 		batDischargePwrValue = await this.getBatteryDischargePowerSumValue();
+
+		if ((exportPwrValue > 0) && (importPwrValue >0)) {
+			if (exportPwrValue >= importPwrValue) {
+				importPwrValue = 0;
+			} 
+			else {
+				exportPwrValue = 0;
+			}
+		}
+
+		if ((batChargePwrValue > 0) && (batDischargePwrValue > 0)) {
+			if (batChargePwrValue >= batDischargePwrValue) {
+				batDischargePwrValue = 0;
+			}
+			else {
+				batChargePwrValue = 0;
+			}
+		}
+
 		//this.log.info('Namespace: ' + this.namespace);
 		await this.setStateAsync(this.namespace + '.power.pvpower', {val: pvPwrValue, ack: true});
 		await this.setStateAsync(this.namespace + '.power.load', {val: loadPwrValur, ack: true});
@@ -164,7 +183,12 @@ class EnergyFlowMotion extends utils.Adapter {
 					try {
 						let powerState = await this.getForeignStateAsync(pwrObjId);
 						if (powerState.val != null) {
-							pwrValue += parseFloat(powerState.val)*pwrFactor;
+							if ((parseFloat(powerState.val)*pwrFactor) < 0) {
+								this.log.debug('Value for ' + cfgTableEntry.pwrObjectId + ' is negative (Calculated Value is: ' + parseFloat(powerState.val)*pwrFactor +') setting Value to zero.');
+								pwrValue += 0;
+							} else {
+								pwrValue += parseFloat(powerState.val)*pwrFactor;
+							}							
 							//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
 						}						
 					} catch (error) {
@@ -173,7 +197,7 @@ class EnergyFlowMotion extends utils.Adapter {
 				}
 			}
 			//this.log.info('ConfigTable: ' + cfgTable + ' , SumPowerRead:' + pwrValue);
-		}
+		}		
 		return pwrValue;
 	}
 
