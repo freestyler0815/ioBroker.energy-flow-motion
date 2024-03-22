@@ -277,7 +277,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			};
 		};
 		return vEfmValues;
-	};
+	}
 
 	async historyManage(pEfmValues) {		
 		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();		
@@ -359,7 +359,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			};
 		};
 		return pEfmValues;
-	};
+	}
 
 	async calcValues(p1FloatPvPower, p1FloatLoad, p1FloatExport, p1FloatImport, p1FloatBatCharge, p1FloatBatDischarge, pEfmValues) {
 		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
@@ -436,7 +436,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		};
 		this.log.debug("calcvalues executed");
 		return vEfmCalcValues;
-	};
+	}
 
 	async writeValues(pEfmCalcValues) {
 		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
@@ -458,7 +458,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			};
 		};
 		this.log.debug("writevalues executed");
-	};
+	}
 
 
 	
