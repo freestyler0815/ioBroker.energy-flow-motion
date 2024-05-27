@@ -98,13 +98,14 @@ class EnergyFlowMotion extends utils.Adapter {
 	
 	async updateValues() {			
 		//this.log.info('RefreshRate:' + this.refreshRate);
-		let pvPwrValue = 0, loadPwrValur = 0, exportPwrValue = 0, importPwrValue = 0, batChargePwrValue = 0, batDischargePwrValue = 0;
+		let pvPwrValue = 0, loadPwrValur = 0, exportPwrValue = 0, importPwrValue = 0, batChargePwrValue = 0, batDischargePwrValue = 0, batSoCValue = 0;
 		pvPwrValue = await this.getPvPowerSumValue();
 		loadPwrValur = await this.getLoadPowerSumValue();
 		exportPwrValue = await this.getGridExportPowerSumValue();
 		importPwrValue = await this.getGridImportPowerSumValue();
 		batChargePwrValue = await this.getBatteryChargePowerSumValue();
 		batDischargePwrValue = await this.getBatteryDischargePowerSumValue();
+		batSoCValue = await this.getBatterySoCSumValue();
 
 		if ((exportPwrValue > 0) && (importPwrValue >0)) {
 			if (exportPwrValue >= importPwrValue) {
@@ -131,6 +132,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		await this.setStateAsync(this.namespace + '.power.import', {val: importPwrValue, ack: true});
 		await this.setStateAsync(this.namespace + '.power.batteryCharge', {val: batChargePwrValue, ack: true});
 		await this.setStateAsync(this.namespace + '.power.batteryDischarge', {val: batDischargePwrValue, ack: true});
+		await this.setStateAsync(this.namespace + '.power.batterySoC', {val: batSoCValue, ack: true});
 		await this.efmCalcEnergyHistory(pvPwrValue,loadPwrValur,exportPwrValue,importPwrValue,batChargePwrValue,batDischargePwrValue);
 	}
 
@@ -168,6 +170,36 @@ class EnergyFlowMotion extends utils.Adapter {
 		let pwrValue = await this.getSumValuesFromCfgTables(this.config.batDischargeDataTable);
 		this.log.debug('BatDischargePowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
+	}
+
+	async getBatterySoCSumValue(){
+		let cfgTable = this.config.batSoCDataTable;
+		let socValue = 0;
+		let counter = 0;
+		if (cfgTable && Array.isArray(cfgTable)) {
+			//this.log.info('Is Array');
+			for (const p in cfgTable) {
+				const cfgTableEntry = cfgTable[p];
+				//this.log.info('Entry Selected');
+				if (cfgTableEntry.socObjectId) {
+					let socObjId = cfgTableEntry.socObjectId;					
+					//this.log.info('Entry Read');
+					try {
+						let socState = await this.getForeignStateAsync(socObjId);
+						if (socState.val != null) {							
+							socValue += parseFloat(socState.val);
+							counter += 1;
+							//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);						
+						}						
+					} catch (error) {
+						this.log.error(error);
+					}
+				}
+			}
+			//this.log.info('ConfigTable: ' + cfgTable + ' , SumPowerRead:' + pwrValue);
+		}
+		this.log.debug('BatSoCSum: ' + socValue/counter + ' %');
+		return socValue/counter;
 	}
 
 	async getSumValuesFromCfgTables(cfgTable){

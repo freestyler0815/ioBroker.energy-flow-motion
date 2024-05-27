@@ -259,6 +259,28 @@
                 }
             }
         },
+        "_batterySoCData":{
+            "type": "panel",
+            "label": "Battery SoC Data",
+            "items": {
+                "batSoCDataTable":{
+                    "type": "table",
+                    "label": "Battery State of Charge Data Source Table",
+                    "items": [
+                        {
+                            "type": "objectId",
+                            "width": "250px",
+                            "title": {"en": "ObjectID"},
+                            "attr": "socObjectId",
+                            "filter": false,
+                            "sort": true,
+                            "default": ""
+                        }
+                    ]
+
+                }
+            }
+        },
         "_loadPowerControlChannels":{
             "type": "panel",
             "label": "Load Power Control Channels",
