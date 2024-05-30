@@ -75,8 +75,7 @@
         "updateInterval": "2",
         "batteryExists": "false",
 		"importThreshold": "50",
-		"exportThreshold": "50",
-		"powerControlChannels": "1"
+		"exportThreshold": "50"
     },
     "objects": [],
     "instanceObjects": [
@@ -1115,6 +1114,28 @@
 				"unit": "%"
 			},
 			"native": {}
-		}				
+		},
+		{
+			"_id": "loadPowerControl",
+			"type": "channel",
+			"common": {
+				"name": "Load Power Control"
+			},
+			"native": ""
+		},
+		{
+			"_id": "loadPowerControl.sumActiveLoad",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Sum of active Load Power",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kW"
+			},
+			"native": {}
+		}
 	]
 }

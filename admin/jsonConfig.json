@@ -306,7 +306,7 @@
                             "attr": "pwcChannelTitle",
                             "filter": false,
                             "sort": true,
-                            "default": ""
+                            "default": "CH(x)"
                         },
                         {
                             "type": "text",
@@ -325,7 +325,8 @@
                             "filter": false,
                             "sort": true,
                             "style":{"textAlign": "right"},
-                            "default": ""
+                            "default": 0,
+                            "min": 0
                         },
                         {
                             "type": "number",
@@ -335,7 +336,8 @@
                             "filter": false,
                             "sort": true,
                             "style":{"textAlign": "right"},
-                            "default": ""
+                            "default": 0,
+                            "min": 0
                         },
                         {
                             "type": "number",
@@ -345,7 +347,8 @@
                             "filter": false,
                             "sort": true,
                             "style":{"textAlign": "right"},
-                            "default": ""
+                            "default": 0,
+                            "min": 0
                         },
                         {
                             "type": "number",
@@ -357,8 +360,10 @@
                             "style":{"textAlign": "right"},
                             "default": "30"
                         }
-                    ]
-
+                    ],
+                    "uniqueColumns": ["pwcChannelTitle"],
+                    "export": true,
+                    "import": true
                 }
             }
         },
@@ -366,7 +371,7 @@
             "type": "panel",
             "label": "Energy Storage Control Channels",
             "items": {
-                "powerControlChannels":{
+                "energyStorageControlChannels":{
                     "type": "table",
                     "label": "Energy Storage Control Channels",
                     "items": [

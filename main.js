@@ -35,6 +35,7 @@ class EnergyFlowMotion extends utils.Adapter {
 	 * Is called when databases are connected and adapter received configuration.
 	 */
 	async onReady() {
+		await this.initPowerControlChannels();
 		this.refreshRate = parseInt(this.config.updateInterval)*1000;
 		await this.updateValues();
 		this.intervalId = this.setInterval( async () => {
@@ -134,6 +135,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		await this.setStateAsync(this.namespace + '.power.batteryDischarge', {val: batDischargePwrValue, ack: true});
 		await this.setStateAsync(this.namespace + '.power.batterySoC', {val: batSoCValue, ack: true});
 		await this.efmCalcEnergyHistory(pvPwrValue,loadPwrValur,exportPwrValue,importPwrValue,batChargePwrValue,batDischargePwrValue);
+		await this.loadPowerControl(pvPwrValue,loadPwrValur,exportPwrValue,importPwrValue,batChargePwrValue,batDischargePwrValue);
 	}
 
 	async getPvPowerSumValue(){
@@ -177,26 +179,21 @@ class EnergyFlowMotion extends utils.Adapter {
 		let socValue = 0;
 		let counter = 0;
 		if (cfgTable && Array.isArray(cfgTable)) {
-			//this.log.info('Is Array');
 			for (const p in cfgTable) {
 				const cfgTableEntry = cfgTable[p];
-				//this.log.info('Entry Selected');
 				if (cfgTableEntry.socObjectId) {
-					let socObjId = cfgTableEntry.socObjectId;					
-					//this.log.info('Entry Read');
+					let socObjId = cfgTableEntry.socObjectId;
 					try {
 						let socState = await this.getForeignStateAsync(socObjId);
 						if (socState.val != null) {							
 							socValue += parseFloat(socState.val);
 							counter += 1;
-							//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);						
 						}						
 					} catch (error) {
 						this.log.error(error);
 					}
 				}
 			}
-			//this.log.info('ConfigTable: ' + cfgTable + ' , SumPowerRead:' + pwrValue);
 		}
 		this.log.debug('BatSoCSum: ' + socValue/counter + ' %');
 		return socValue/counter;
@@ -496,6 +493,291 @@ class EnergyFlowMotion extends utils.Adapter {
 		this.log.debug("writevalues executed");
 	}
 
+	async initPowerControlChannels() {
+		this.log.info('PowerControlInitChannels started');
+		let cfgTable = this.config.powerControlChannels;
+		let counter = 0;
+		if (this.supportsFeature && this.supportsFeature('ADAPTER_DEL_OBJECT_RECURSIVE')) {
+			await this.delObjectAsync(this.namespace + '.loadPowerControl.channels', { recursive: true });
+		}
+		if (cfgTable && Array.isArray(cfgTable)) {
+			this.log.info('PowerControlInitChannels started');
+			for (const p in cfgTable) {
+				const cfgTableEntry = cfgTable[p];								
+				//ToDo: Fehlermeldung für leeren Title einbauen
+				if (cfgTableEntry.pwcChannelTitle) {
+					this.log.info('PowerControlInitChannel: ' + cfgTableEntry.pwcChannelTitle);
+					counter +=1;
+					await this.createObjectTreeLPC(cfgTableEntry,counter);
+					//let channelPrefix = this.leadingZero(counter,3);
+					//let socObjId = cfgTableEntry.socObjectId;
+					//let pwrFactor = parseFloat(cfgTableEntry.pwrFactor);
+				}
+			}
+		}
+		//this.log.debug('BatSoCSum: ' + socValue/counter + ' %');
+	}
+
+	async createObjectTreeLPC(cfgTableEntry,priority) {
+		/*
+		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.' + cfgTableEntry.pwcChannelTitle , {
+			type: 'state',
+			common: {
+				name: 'testVariable',
+				type: 'boolean',
+				role: 'indicator',
+				read: true,
+				write: true,
+			},
+			native: {},
+		});*/		
+		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels', {
+			type: 'folder',
+			common: {
+				name: 'Load Power Control Channels'
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle , {
+			type: 'folder',
+			common: {
+				name: cfgTableEntry.pwcChannelDescription							
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.priority' , {
+			type: 'state',
+			common: {
+				name: 'Priority',
+				type: 'number',
+				role: 'value',
+				read: true,
+				write: true,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.active' , {
+			type: 'state',
+			common: {
+				name: 'Active',
+				type: 'boolean',
+				role: 'indicator',
+				read: true,
+				write: true,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerOn' , {
+			type: 'state',
+			common: {
+				name: 'PowerOn',
+				type: 'boolean',
+				role: 'switch.power',
+				read: true,
+				write: true,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerValue' , {
+			type: 'state',
+			common: {
+				name: 'PowerValue',
+				type: 'number',
+				role: 'value',
+				unit: 'kW',
+				read: true,
+				write: true,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.shutdownDelay' , {
+			type: 'state',
+			common: {
+				name: 'ShutdownDelay',
+				type: 'number',
+				role: 'value',
+				unit: 's',
+				read: true,
+				write: true,
+			},
+			native: {},
+		});		
+		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.priority', {val: priority, ack: true});
+		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.active', {val: cfgTableEntry.pwcChannelEnabled, ack: true});
+		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerOn', {val: false, ack: true});
+		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerValue', {val: 0, ack: true});
+		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.shutdownDelay', {val: parseFloat(cfgTableEntry.pwcChannelShutdownDelay), ack: true});
+	}
+
+	async loadPowerControl(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge) {		
+		if (this.config.powerControlActive) {
+			let powerBudget = await this.calcPowerBudget(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge);
+			let cfgTable = this.config.powerControlChannels;
+			if (cfgTable && Array.isArray(cfgTable)) {				
+				if (powerBudget > 0) {				
+					for (const p in cfgTable) {
+						const cfgTableEntry = cfgTable[p];
+						if (cfgTableEntry.pwcChannelEnabled) {
+							let maxPower = cfgTableEntry.pwcChannelMaxPower;
+							let minPower = cfgTableEntry.pwcChannelMinPower;
+							let powerStepSize = cfgTableEntry.pwcChannelStepSize;
+							let shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
+							let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
+							if (activePowerConsumptionValue == 0) {
+								if ((maxPower == minPower) && (powerStepSize == 0)) {
+									if (minPower <= powerBudget) {
+										await this.activatePwcChannel(cfgTableEntry.pwcChannelTitle,minPower,shutdownDelay);
+										powerBudget -= minPower;
+									}
+								} else if ((maxPower > minPower) && (powerStepSize > 0)) {
+									if (minPower <= powerBudget) {
+										let powerTarget = minPower;
+										while (powerTarget + powerStepSize <= powerBudget) {
+											powerTarget += powerStepSize;
+										}
+										await this.activatePwcChannel(cfgTableEntry.pwcChannelTitle,powerTarget,shutdownDelay);
+										powerBudget -= powerTarget;
+									}
+								}
+							} else if ((maxPower > minPower) && (powerStepSize > 0)) {
+								if (powerStepSize <= powerBudget) {									
+									powerBudget -= await this.increasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,maxPower,shutdownDelay);
+								}
+
+							}
+						}
+					}
+				}
+				else if (powerBudget < 0) {
+					let tabelCounter = cfgTable.length;
+					for (let i = tabelCounter - 1; i >= 0; i--) {
+						const cfgTableEntry = cfgTable[i];
+						if (cfgTableEntry.pwcChannelEnabled) {
+							let maxPower = cfgTableEntry.pwcChannelMaxPower;
+							let minPower = cfgTableEntry.pwcChannelMinPower;
+							let powerStepSize = cfgTableEntry.pwcChannelStepSize;
+							let shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
+							let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
+							if (activePowerConsumptionValue > 0) {
+								if ((maxPower == minPower) && (powerStepSize == 0)) {
+									if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle)) {
+										powerBudget += activePowerConsumptionValue;
+									}
+								} else if ((maxPower > minPower) && (powerStepSize > 0)) {
+									if (activePowerConsumptionValue > minPower) {
+										powerBudget += await this.decreasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,minPower);
+									} else {
+										if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle)) {
+											powerBudget += activePowerConsumptionValue;
+										}
+									}
+								}
+
+							}
+
+						}
+					}
+				}
+			}
+		}
+	}
+
+	async activatePwcChannel(pwcChannelTitle,powerValue,shutdownDelay) {		
+		let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
+		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue', {val: powerValue, ack: true});
+		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerOn', {val: true, ack: true});
+		if (shutdownDelay > shutdownDelayValue) {
+			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay', {val: shutdownDelay, ack: true});
+		}
+	}
+
+	async increasePowerPwcChannel(pwcChannelTitle,powerStepSize,maxPower,shutdownDelay) {
+		let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
+		let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(pwcChannelTitle);
+		let newPowerConsumption = activePowerConsumptionValue + powerStepSize;		
+		if (newPowerConsumption > maxPower) {
+			newPowerConsumption = maxPower;
+		}
+		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue', {val: newPowerConsumption, ack: true});
+		if (shutdownDelay > shutdownDelayValue) {
+			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay', {val: shutdownDelay, ack: true});
+		}
+		return newPowerConsumption;
+	}
+
+	async decreasePowerPwcChannel(pwcChannelTitle,powerStepSize,minPower) {
+		let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(pwcChannelTitle);
+		let newPowerConsumption = activePowerConsumptionValue - powerStepSize;
+		if (newPowerConsumption < 0) {
+			newPowerConsumption = 0;
+		}
+		if (newPowerConsumption < minPower) {
+			newPowerConsumption = minPower;
+		}
+		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue', {val: newPowerConsumption, ack: true});
+		return newPowerConsumption;
+	}
+
+	async deactivatePwcChannel(pwcChannelTitle) {
+		let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
+		let updateInterval = parseInt(this.config.updateInterval);
+		if (shutdownDelayValue - updateInterval > 0) {
+			shutdownDelayValue -= updateInterval;
+			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay', {val: shutdownDelayValue, ack: true});
+			return false;
+		} else {
+			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue', {val: 0, ack: true});
+			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerOn', {val: false, ack: true});
+			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay', {val: 0, ack: true});
+			return true;
+		}
+	}
+
+	async getPwcActivePowerConsumptionValue(pwcChannelTitle) {
+		try {
+			let activePowerConsumption = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue');
+			if (activePowerConsumption.val != null) {							
+				return parseFloat(activePowerConsumption.val);
+			} else {
+				return 0;
+			}
+		} catch (error) {
+			this.log.error(error);
+			return 0;
+		}
+	}
+
+	async getPwcShutDownDelay(pwcChannelTitle) {
+		try {
+			let shutdownDelay = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay');
+			if (shutdownDelay.val != null) {							
+				return parseFloat(shutdownDelay.val);
+			} else {
+				return 0;
+			}
+		} catch (error) {
+			this.log.error(error);
+			return 0;
+		}
+	}
+
+	async calcPowerBudget(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge) {
+		let exportThreshold = parseFloat(this.config.exportThreshold)/1000;
+		let importThreshold = parseFloat(this.config.importThreshold)/1000;
+		if ((pFloatBatDischarge > 0) || (pFloatImport > importThreshold)) {
+			return (pFloatBatDischarge + pFloatImport)*-1;
+		}
+		if (pFloatExport > exportThreshold) {
+			return pFloatExport;
+		}
+		return 0;
+	}
+
+	leadingZero(num, size) {
+		num = num.toString();
+		while (num.length < size) num = "0" + num;
+		return num;
+	}
 
 	
 	
