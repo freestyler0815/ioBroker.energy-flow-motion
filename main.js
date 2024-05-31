@@ -218,6 +218,8 @@ class EnergyFlowMotion extends utils.Adapter {
 							} 
 							pwrValue += parseFloat(powerState.val)*pwrFactor;														
 							//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
+						} else {
+							pwrValue = 0;
 						}						
 					} catch (error) {
 						this.log.error(error);
@@ -464,10 +466,10 @@ class EnergyFlowMotion extends utils.Adapter {
 					};
 					break;
 				};
-				this.log.debug('ValueID: ' + sEfmValueIDs[yd] + ' (sEfmValueIDs[' + yd.toString() +']) Value: ' + pEfmValues[xd][yd].valueOf());				
+				//this.log.debug('ValueID: ' + sEfmValueIDs[yd] + ' (sEfmValueIDs[' + yd.toString() +']) Value: ' + pEfmValues[xd][yd].valueOf());				
 			};
 		};
-		this.log.debug("calcvalues executed");
+		//this.log.debug("calcvalues executed");
 		return vEfmCalcValues;
 	}
 
