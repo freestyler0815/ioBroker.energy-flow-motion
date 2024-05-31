@@ -213,7 +213,7 @@ class EnergyFlowMotion extends utils.Adapter {
 					try {
 						let powerState = await this.getForeignStateAsync(pwrObjId);
 						if (powerState.val != null) {
-							if (Number.isNaN(powerState.val)){
+							if (isNaN(powerState.val)){
 								pwrValue = 0;
 							} else {
 								if ((parseFloat(powerState.val)*pwrFactor) < 0) {
