@@ -213,13 +213,16 @@ class EnergyFlowMotion extends utils.Adapter {
 					try {
 						let powerState = await this.getForeignStateAsync(pwrObjId);
 						if (powerState.val != null) {
-							if ((parseFloat(powerState.val)*pwrFactor) < 0) {
-								this.log.debug('Value for ' + cfgTableEntry.pwrObjectId + ' is negative (Calculated Value is: ' + parseFloat(powerState.val)*pwrFactor +') setting Value to zero.');								
-							} 
-							pwrValue += parseFloat(powerState.val)*pwrFactor;														
-							//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
-						} else {
-							pwrValue = 0;
+							if (Number.isNaN(powerState.val)){
+								pwrValue = 0;
+							} else {
+								if ((parseFloat(powerState.val)*pwrFactor) < 0) {
+									this.log.debug('Value for ' + cfgTableEntry.pwrObjectId + ' is negative (Calculated Value is: ' + parseFloat(powerState.val)*pwrFactor +') setting Value to zero.');								
+								} 
+								pwrValue += parseFloat(powerState.val)*pwrFactor;														
+								//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
+							}
+							
 						}						
 					} catch (error) {
 						this.log.error(error);
