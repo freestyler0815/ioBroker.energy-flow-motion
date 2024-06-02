@@ -649,9 +649,9 @@ class EnergyFlowMotion extends utils.Adapter {
 								}
 							} else if ((maxPower > minPower) && (powerStepSize > 0)) {
 								if (powerStepSize <= powerBudget) {
-									let powerIncrease = await this.increasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,maxPower,shutdownDelay);
-									powerBudget -= powerIncrease;
-									sumPowerConsumption += powerIncrease;
+									let newPowerConsumption = await this.increasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,maxPower,shutdownDelay);
+									powerBudget -= newPowerConsumption;
+									sumPowerConsumption += newPowerConsumption;
 								} 
 							} else {
 								sumPowerConsumption += activePowerConsumptionValue;
@@ -679,9 +679,9 @@ class EnergyFlowMotion extends utils.Adapter {
 									}
 								} else if ((maxPower > minPower) && (powerStepSize > 0)) {
 									if (activePowerConsumptionValue > minPower) {
-										let increasedPower = await this.decreasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,minPower);
-										powerBudget += increasedPower;
-										sumPowerConsumption += (activePowerConsumptionValue - increasedPower);
+										let newPowerConsumption = await this.decreasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,minPower);
+										powerBudget += newPowerConsumption;
+										sumPowerConsumption += newPowerConsumption;
 									} else {
 										if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle)) {
 											powerBudget += activePowerConsumptionValue;
