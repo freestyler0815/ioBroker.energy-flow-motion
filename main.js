@@ -652,7 +652,9 @@ class EnergyFlowMotion extends utils.Adapter {
 									let newPowerConsumption = await this.increasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,maxPower,shutdownDelay);
 									powerBudget -= newPowerConsumption;
 									sumPowerConsumption += newPowerConsumption;
-								} 
+								} else {
+									sumPowerConsumption += activePowerConsumptionValue;	
+								}
 							} else {
 								sumPowerConsumption += activePowerConsumptionValue;
 							}
