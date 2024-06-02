@@ -723,11 +723,11 @@ class EnergyFlowMotion extends utils.Adapter {
 	async increasePowerPwcChannel(pwcChannelTitle,powerStepSize,maxPower,shutdownDelay,powerBudget) {
 		let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
 		let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(pwcChannelTitle);
-		let powerTarget = activePowerConsumptionValue;
+		let powerTarget = 0;
 		while (powerTarget + powerStepSize <= powerBudget) {
 			powerTarget += powerStepSize;
 		}
-		let newPowerConsumption = powerTarget;
+		let newPowerConsumption = activePowerConsumptionValue + powerTarget;
 		if (newPowerConsumption > maxPower) {
 			newPowerConsumption = maxPower;
 		}
