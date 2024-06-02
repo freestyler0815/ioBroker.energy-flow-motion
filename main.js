@@ -618,6 +618,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		if (this.config.powerControlActive) {
 			let powerBudget = await this.calcPowerBudget(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge);
 			let cfgTable = this.config.powerControlChannels;
+			let sumPowerConsumption = 0;
 			if (cfgTable && Array.isArray(cfgTable)) {				
 				if (powerBudget > 0) {				
 					for (const p in cfgTable) {
@@ -633,6 +634,7 @@ class EnergyFlowMotion extends utils.Adapter {
 									if (minPower <= powerBudget) {
 										await this.activatePwcChannel(cfgTableEntry.pwcChannelTitle,minPower,shutdownDelay);
 										powerBudget -= minPower;
+										sumPowerConsumption += minPower;
 									}
 								} else if ((maxPower > minPower) && (powerStepSize > 0)) {
 									if (minPower <= powerBudget) {
@@ -642,16 +644,21 @@ class EnergyFlowMotion extends utils.Adapter {
 										}
 										await this.activatePwcChannel(cfgTableEntry.pwcChannelTitle,powerTarget,shutdownDelay);
 										powerBudget -= powerTarget;
+										sumPowerConsumption += powerTarget;
 									}
 								}
 							} else if ((maxPower > minPower) && (powerStepSize > 0)) {
-								if (powerStepSize <= powerBudget) {									
-									powerBudget -= await this.increasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,maxPower,shutdownDelay);
-								}
-
+								if (powerStepSize <= powerBudget) {
+									let powerIncrease = await this.increasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,maxPower,shutdownDelay);
+									powerBudget -= powerIncrease;
+									sumPowerConsumption += powerIncrease;
+								} 
+							} else {
+								sumPowerConsumption += activePowerConsumptionValue;
 							}
 						}
 					}
+					await this.setStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad', {val: sumPowerConsumption, ack: true});
 				}
 				else if (powerBudget < 0) {
 					let tabelCounter = cfgTable.length;
@@ -666,14 +673,20 @@ class EnergyFlowMotion extends utils.Adapter {
 							if (activePowerConsumptionValue > 0) {
 								if ((maxPower == minPower) && (powerStepSize == 0)) {
 									if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle)) {
-										powerBudget += activePowerConsumptionValue;
+										powerBudget += activePowerConsumptionValue;										
+									} else {
+										sumPowerConsumption += activePowerConsumptionValue;
 									}
 								} else if ((maxPower > minPower) && (powerStepSize > 0)) {
 									if (activePowerConsumptionValue > minPower) {
-										powerBudget += await this.decreasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,minPower);
+										let increasedPower = await this.decreasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,minPower);
+										powerBudget += increasedPower;
+										sumPowerConsumption += (activePowerConsumptionValue - increasedPower);
 									} else {
 										if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle)) {
 											powerBudget += activePowerConsumptionValue;
+										} else {
+											sumPowerConsumption += activePowerConsumptionValue;
 										}
 									}
 								}
@@ -682,6 +695,7 @@ class EnergyFlowMotion extends utils.Adapter {
 
 						}
 					}
+					await this.setStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad', {val: sumPowerConsumption, ack: true});
 				}
 			}
 		}
@@ -757,6 +771,20 @@ class EnergyFlowMotion extends utils.Adapter {
 			let shutdownDelay = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay');
 			if (shutdownDelay.val != null) {							
 				return parseFloat(shutdownDelay.val);
+			} else {
+				return 0;
+			}
+		} catch (error) {
+			this.log.error(error);
+			return 0;
+		}
+	}
+
+	async getPwcSumActiveLoad() {
+		try {
+			let sumActiveLoad = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad');
+			if (sumActiveLoad.val != null) {							
+				return parseFloat(sumActiveLoad.val);
 			} else {
 				return 0;
 			}
