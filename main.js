@@ -674,9 +674,13 @@ class EnergyFlowMotion extends utils.Adapter {
 							let shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
 							let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
 							if (activePowerConsumptionValue > 0) {
-								if ((maxPower == minPower) && (powerStepSize == 0) && (dynamicLoadDecreaseActive == false)) {
-									if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle)) {
-										powerBudget += activePowerConsumptionValue;										
+								if ((maxPower == minPower) && (powerStepSize == 0)) {
+									if (dynamicLoadDecreaseActive == false) { 
+										if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle)) {
+											powerBudget += activePowerConsumptionValue;										
+										} else {
+											sumPowerConsumption += activePowerConsumptionValue;
+										}
 									} else {
 										sumPowerConsumption += activePowerConsumptionValue;
 									}
@@ -825,7 +829,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			for (const p in cfgTable) {
 				const cfgTableEntry = cfgTable[p];
 				if (cfgTableEntry.pwcChannelEnabled) {					
-					await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.shutdownDelay', {val: cfgTableEntry.pwcChannelShutdownDelay, ack: true});					
+					await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.shutdownDelay', {val: parseInt(cfgTableEntry.pwcChannelShutdownDelay), ack: true});					
 				}
 			}
 
