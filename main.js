@@ -825,7 +825,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			for (const p in cfgTable) {
 				const cfgTableEntry = cfgTable[p];
 				if (cfgTableEntry.pwcChannelEnabled) {					
-					await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay', {val: cfgTableEntry.pwcChannelShutdownDelay, ack: true});					
+					await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.shutdownDelay', {val: cfgTableEntry.pwcChannelShutdownDelay, ack: true});					
 				}
 			}
 
