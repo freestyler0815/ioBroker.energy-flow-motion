@@ -815,8 +815,14 @@ class EnergyFlowMotion extends utils.Adapter {
 	async calcPowerBudget(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge) {
 		let exportThreshold = parseFloat(this.config.exportThreshold)/1000;
 		let importThreshold = parseFloat(this.config.importThreshold)/1000;
-		if ((pFloatBatDischarge > 0) || (pFloatImport > importThreshold)) {
+		if ((pFloatBatDischarge > 0) && (pFloatImport > importThreshold)) {
 			return (pFloatBatDischarge + pFloatImport)*-1;
+		}
+		if ((pFloatBatDischarge > 0) && (pFloatExport > exportThreshold)) {
+			return pFloatExport - pFloatBatDischarge;
+		}
+		if (pFloatImport > importThreshold) {
+			return pFloatImport*-1;
 		}
 		if (pFloatExport > exportThreshold) {
 			return pFloatExport;
