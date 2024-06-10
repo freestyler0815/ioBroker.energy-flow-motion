@@ -821,6 +821,9 @@ class EnergyFlowMotion extends utils.Adapter {
 		if ((pFloatBatDischarge > 0) && (pFloatExport > exportThreshold)) {
 			return pFloatExport - pFloatBatDischarge;
 		}
+		if (pFloatBatDischarge > 0) {
+			return pFloatBatDischarge*-1;
+		}
 		if (pFloatImport > importThreshold) {
 			return pFloatImport*-1;
 		}
