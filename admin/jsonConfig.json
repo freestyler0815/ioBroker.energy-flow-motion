@@ -53,6 +53,16 @@
                         "label": "Power Control active",
                         "help": "Activate Power Control"
                 },
+                "powerControlActivationDelay":{
+                        "type": "number",
+                        "min": 0,
+                        "max": 10,                        
+                        "sm": 2,
+                        "md": 2,
+                        "lg": 2,
+                        "label": "Power Control Activation Delay",
+                        "help": "Amount of Update-Intervalls to delay the activation of a Power Channel"
+                },                
                 "batteryExists":{
                     "newLine": true,
                     "type": "checkbox",                    
@@ -72,7 +82,6 @@
                     "help": "Activate monthly Energy Counter"
                 },
                 "energyCounterYearActive":{
-                    "newLine": true,
                     "type": "checkbox",
                     "sm": 2,
                     "md": 1,
