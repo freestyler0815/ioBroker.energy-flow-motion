@@ -1,8 +1,12 @@
 {
     "common": {
         "name": "energy-flow-motion",
-        "version": "0.0.2",
+        "version": "0.0.3",
         "news": {
+			"0.0.3": {
+                "en": "Added activation delay for LoadPowerControlChannels",
+                "de": "Einschaltverzögerung für LoadPowerControlChannels hinzugefügt"
+            },
             "0.0.2": {
                 "en": "Added multiple Battery SoC Calculation",
                 "de": "Berechnung von mehreren Batterie SoC's hinzugefügt"
@@ -85,7 +89,7 @@
 			"common": {
 				"name": "Power Values"
 			},
-			"native": ""
+			"native": {}
 		},
 		{
 			"_id": "power.load",
@@ -191,7 +195,7 @@
 			"common": {
 				"name": "Energy Values"
 			},
-			"native": ""
+			"native": {}
 		},
 		{
 			"_id": "energy.live",
@@ -199,7 +203,7 @@
 			"common": {
 				"name": "Energy Values live"
 			},
-			"native": ""
+			"native": {}
 		},
 		{
 			"_id": "energy.live.day",
@@ -207,7 +211,7 @@
 			"common": {
 				"name": "Energy Values Live Today"
 			},
-			"native": ""
+			"native": {}
 		},
 		{
 			"_id": "energy.live.day.load",
@@ -358,7 +362,7 @@
 			"common": {
 				"name": "Energy Values Live Month"
 			},
-			"native": ""
+			"native": {}
 		},
 		{
 			"_id": "energy.live.month.load",
@@ -509,7 +513,7 @@
 			"common": {
 				"name": "Energy Values Live Year"
 			},
-			"native": ""
+			"native": {}
 		},
 		{
 			"_id": "energy.live.year.load",
@@ -660,7 +664,7 @@
 			"common": {
 				"name": "Energy Values History"
 			},
-			"native": ""
+			"native": {}
 		},
 		{
 			"_id": "energy.history.day",
@@ -668,7 +672,7 @@
 			"common": {
 				"name": "Energy Values History Yesterday"
 			},
-			"native": ""
+			"native": {}
 		},
 		{
 			"_id": "energy.history.day.load",
@@ -819,7 +823,7 @@
 			"common": {
 				"name": "Energy Values History Last Month"
 			},
-			"native": ""
+			"native": {}
 		},
 		{
 			"_id": "energy.history.month.load",
@@ -970,7 +974,7 @@
 			"common": {
 				"name": "Energy Values History Last Year"
 			},
-			"native": ""
+			"native": {}
 		},
 		{
 			"_id": "energy.history.year.load",
@@ -1121,7 +1125,7 @@
 			"common": {
 				"name": "Load Power Control"
 			},
-			"native": ""
+			"native": {}
 		},
 		{
 			"_id": "loadPowerControl.sumActiveLoad",
