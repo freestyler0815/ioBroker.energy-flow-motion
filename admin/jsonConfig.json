@@ -13,6 +13,7 @@
                     "sm": 2,
                     "md": 2,
                     "lg": 2,
+                    "default": 2,
                     "label": "UpdateInterval",
                     "help": "Update Interval in seconds (1 to 10s possible)"
                 },                
@@ -23,6 +24,7 @@
                         "sm": 2,
                         "md": 2,
                         "lg": 2,
+                        "default": 50,
                         "label": "Import Power Threshold (W)",
                         "help": "Threshold in Watt to detect importing Power from Grid (0W to 500W possible)"
                 },                
@@ -33,6 +35,7 @@
                         "sm": 2,
                         "md": 2,
                         "lg": 2,
+                        "default": 50,
                         "label": "Export Power Threshold (W)",
                         "help": "Threshold in Watt to detect exporting Power to Grid (0W to 500W possible)"
                 },                
@@ -50,6 +53,7 @@
                         "sm": 2,
                         "md": 1,
                         "lg": 1,
+                        "default": false,
                         "label": "Power Control active",
                         "help": "Activate Power Control"
                 },
@@ -60,6 +64,7 @@
                         "sm": 2,
                         "md": 2,
                         "lg": 2,
+                        "default": 1,
                         "label": "Power Control Activation Delay",
                         "help": "Amount of Update-Intervalls to delay the activation of a Power Channel"
                 },                

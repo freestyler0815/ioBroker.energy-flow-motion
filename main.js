@@ -502,6 +502,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		this.log.info('PowerControlInitChannels started');
 		let cfgTable = this.config.powerControlChannels;
 		let counter = 0;
+		await this.setStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad', {val: 0, ack: true});
 		if (this.supportsFeature && this.supportsFeature('ADAPTER_DEL_OBJECT_RECURSIVE')) {
 			await this.delObjectAsync(this.namespace + '.loadPowerControl.channels', { recursive: true });
 		}
@@ -606,21 +607,39 @@ class EnergyFlowMotion extends utils.Adapter {
 				write: true,
 			},
 			native: {},
-		});		
+		});
+		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.activationDelay' , {
+			type: 'state',
+			common: {
+				name: 'ActivationDelay',
+				type: 'number',
+				role: 'value',
+				read: true,
+				write: true,
+			},
+			native: {},
+		});					
 		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.priority', {val: priority, ack: true});
 		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.active', {val: cfgTableEntry.pwcChannelEnabled, ack: true});
 		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerOn', {val: false, ack: true});
 		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerValue', {val: 0, ack: true});
 		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.shutdownDelay', {val: parseFloat(cfgTableEntry.pwcChannelShutdownDelay), ack: true});
+		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.activationDelay', {val: parseFloat(this.config.powerControlActivationDelay), ack: true});
 	}
 
-	async loadPowerControl(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge) {		
+	//this function is the main function to control the loadPowerChannels
+	async loadPowerControl(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge) {
+		//loadPowerControl active?
+		//this.log.info('loadPowerControl');		
 		if (this.config.powerControlActive) {
 			let powerBudget = await this.calcPowerBudget(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge);
+			//this.log.info('Powerbudget: '+powerBudget);
 			let cfgTable = this.config.powerControlChannels;
 			let sumPowerConsumption = 0;
 			let dynamicLoadDecreaseActive = false;
-			if (cfgTable && Array.isArray(cfgTable)) {				
+			//Check if Powercontrolchannels exists in the setup
+			if (cfgTable && Array.isArray(cfgTable)) {
+				//powerBudget > 0, activate loadPowerChannels to consume the energy			
 				if (powerBudget > 0) {				
 					for (const p in cfgTable) {
 						const cfgTableEntry = cfgTable[p];
@@ -630,26 +649,34 @@ class EnergyFlowMotion extends utils.Adapter {
 							let powerStepSize = cfgTableEntry.pwcChannelStepSize;
 							let shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
 							let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
+							//current channel active power consumption = 0
 							if (activePowerConsumptionValue == 0) {
+								// static channel
 								if ((maxPower == minPower) && (powerStepSize == 0)) {
 									if (minPower <= powerBudget) {
-										await this.activatePwcChannel(cfgTableEntry.pwcChannelTitle,minPower,shutdownDelay);
-										powerBudget -= minPower;
-										sumPowerConsumption += minPower;
+										//activate powerChannel
+										if (await this.activatePwcChannel(cfgTableEntry.pwcChannelTitle,minPower,shutdownDelay)) {
+											powerBudget -= minPower;
+											sumPowerConsumption += minPower;
+										}
 									}
+								// dynamic channel
 								} else if ((maxPower > minPower) && (powerStepSize > 0)) {
 									if (minPower <= powerBudget) {
 										let powerTarget = minPower;
 										while (powerTarget + powerStepSize <= powerBudget) {
 											powerTarget += powerStepSize;
 										}
-										await this.activatePwcChannel(cfgTableEntry.pwcChannelTitle,powerTarget,shutdownDelay);
-										powerBudget -= powerTarget;
-										sumPowerConsumption += powerTarget;
+										if (await this.activatePwcChannel(cfgTableEntry.pwcChannelTitle,powerTarget,shutdownDelay)) {
+											powerBudget -= powerTarget;
+											sumPowerConsumption += powerTarget;
+										}										
 									}
 								}
+							// powerChannel already active, check if it is a dynamic channel
 							} else if ((maxPower > minPower) && (powerStepSize > 0)) {
 								if (powerStepSize <= powerBudget) {
+									// increase powerconsumption of dynamic channel
 									let newPowerConsumption = await this.increasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,maxPower,shutdownDelay,powerBudget);
 									powerBudget -= newPowerConsumption;
 									sumPowerConsumption += newPowerConsumption;
@@ -661,8 +688,10 @@ class EnergyFlowMotion extends utils.Adapter {
 							}
 						}
 					}
+					// set current sum of powerconsumption of all channels
 					await this.setStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad', {val: sumPowerConsumption, ack: true});
 				}
+				// decrease or deactivate the powerconsumption of dynamic or static powerChannels 
 				else if (powerBudget < 0) {
 					let tabelCounter = cfgTable.length;
 					for (let i = tabelCounter - 1; i >= 0; i--) {
@@ -711,12 +740,23 @@ class EnergyFlowMotion extends utils.Adapter {
 		}
 	}
 
-	async activatePwcChannel(pwcChannelTitle,powerValue,shutdownDelay) {		
-		let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
-		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue', {val: powerValue, ack: true});
-		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerOn', {val: true, ack: true});
-		if (shutdownDelay > shutdownDelayValue) {
-			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay', {val: shutdownDelay, ack: true});
+	async activatePwcChannel(pwcChannelTitle,powerValue,shutdownDelay) {	
+		let activationDelayValue = await this.getPwcActivationDelay(pwcChannelTitle);
+		let updateInterval = parseInt(this.config.updateInterval);
+		if (activationDelayValue <= 0) {
+			this.log.debug('activate pwc');					
+			let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
+			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue', {val: powerValue, ack: true});
+			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerOn', {val: true, ack: true});
+			if (shutdownDelay > shutdownDelayValue) {
+				await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay', {val: shutdownDelay, ack: true});
+			}
+			return true;
+		} else {
+			this.log.debug('activation delay');
+			activationDelayValue -= 1;
+			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.activationDelay', {val: activationDelayValue, ack: true});			
+			return false;
 		}
 	}
 
@@ -758,6 +798,7 @@ class EnergyFlowMotion extends utils.Adapter {
 	async deactivatePwcChannel(pwcChannelTitle) {
 		let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
 		let updateInterval = parseInt(this.config.updateInterval);
+		let activationDelay = parseInt(this.config.powerControlActivationDelay);
 		if (shutdownDelayValue - updateInterval > 0) {
 			shutdownDelayValue -= updateInterval;
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay', {val: shutdownDelayValue, ack: true});
@@ -766,6 +807,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue', {val: 0, ack: true});
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerOn', {val: false, ack: true});
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay', {val: 0, ack: true});
+			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.activationDelay', {val: activationDelay, ack: true});
 			return true;
 		}
 	}
@@ -797,6 +839,20 @@ class EnergyFlowMotion extends utils.Adapter {
 			return 0;
 		}
 	}
+
+	async getPwcActivationDelay(pwcChannelTitle) {
+		try {
+			let activationDelay = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.activationDelay');
+			if (activationDelay.val != null) {							
+				return parseFloat(activationDelay.val);
+			} else {
+				return 0;
+			}
+		} catch (error) {
+			this.log.error(error);
+			return 0;
+		}
+	}	
 
 	async getPwcSumActiveLoad() {
 		try {
