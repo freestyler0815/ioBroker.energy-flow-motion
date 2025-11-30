@@ -736,6 +736,7 @@ class EnergyFlowMotion extends utils.Adapter {
 					await this.setStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad', {val: sumPowerConsumption, ack: true});
 				} else {
 					await this.resetShutdownDelays(cfgTable);
+					await this.resetActivationDelays(cfgTable);
 				}
 			}
 		}
