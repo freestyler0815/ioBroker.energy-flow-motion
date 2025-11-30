@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-require-imports */
 'use strict';
 
@@ -181,12 +182,12 @@ class EnergyFlowMotion extends utils.Adapter {
 		let socValue = 0;
 		let counter = 0;
 		if (cfgTable && Array.isArray(cfgTable)) {
-			for (const p in cfgTable) {
-				const cfgTableEntry = cfgTable[p];
+			for (let p in cfgTable) {
+				let cfgTableEntry = cfgTable[p];
 				if (cfgTableEntry.socObjectId) {
-					const socObjId = cfgTableEntry.socObjectId;
+					let socObjId = cfgTableEntry.socObjectId;
 					try {
-						const socState = await this.getForeignStateAsync(socObjId);
+						let socState = await this.getForeignStateAsync(socObjId);
 						if (socState.val != null) {
 							socValue += parseFloat(socState.val);
 							counter += 1;
@@ -205,15 +206,15 @@ class EnergyFlowMotion extends utils.Adapter {
 		let pwrValue = 0;
 		if (cfgTable && Array.isArray(cfgTable)) {
 			//this.log.info('Is Array');
-			for (const p in cfgTable) {
-				const cfgTableEntry = cfgTable[p];
+			for (let p in cfgTable) {
+				let cfgTableEntry = cfgTable[p];
 				//this.log.info('Entry Selected');
 				if (cfgTableEntry.pwrObjectId) {
-					const pwrObjId = cfgTableEntry.pwrObjectId;
-					const pwrFactor = parseFloat(cfgTableEntry.pwrFactor);
+					let pwrObjId = cfgTableEntry.pwrObjectId;
+					let pwrFactor = parseFloat(cfgTableEntry.pwrFactor);
 					//this.log.info('Entry Read');
 					try {
-						const powerState = await this.getForeignStateAsync(pwrObjId);
+						let powerState = await this.getForeignStateAsync(pwrObjId);
 						if (powerState.val != null) {
 							if (isNaN(powerState.val)){
 								pwrValue = 0;
@@ -278,13 +279,13 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async readValues() {
-		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
-		const sPathEnergyValues = await this.getEnergyPathLive();
-		const iPathArrayLen = pEfmPathTimePeriod.length;
-		const vEfmValues = [[],[],[]];
+		let pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
+		let sPathEnergyValues = await this.getEnergyPathLive();
+		let iPathArrayLen = pEfmPathTimePeriod.length;
+		let vEfmValues = [[],[],[]];
 		let sEfmCurrPath = '';
-		const sEfmValueIDs = await this.getValueIDs();
-		const iValueIDsArrayLen = sEfmValueIDs.length;
+		let sEfmValueIDs = await this.getValueIDs();
+		let iValueIDsArrayLen = sEfmValueIDs.length;
 		// Alle aktuellen Werte abrufen
 		for (let x = 0; x < iPathArrayLen; x++) {
 			sEfmCurrPath = sPathEnergyValues + '.' + pEfmPathTimePeriod[x] + '.';
@@ -292,7 +293,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			for (let y = 0; y < iValueIDsArrayLen; y++) {
 				this.log.debug('Path for Value:' + sEfmCurrPath + sEfmValueIDs[y]);
 				try {
-					const stateObject = await this.getStateAsync(sEfmCurrPath + sEfmValueIDs[y]);
+					let stateObject = await this.getStateAsync(sEfmCurrPath + sEfmValueIDs[y]);
 					if (stateObject.val != null) {
 						if (sEfmValueIDs[y] == 'date') {
 							vEfmValues[x][y] = new Date (stateObject.val);
@@ -319,15 +320,15 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async historyManage(pEfmValues) {
-		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
-		const iPathArrayLen = pEfmPathTimePeriod.length;
-		const sEfmValueIDs = await this.getValueIDs();
-		const sEnergyPathHistory = await this.getEnergyPathHistory();
-		const iValueIDsArrayLen = sEfmValueIDs.length;
+		let pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
+		let iPathArrayLen = pEfmPathTimePeriod.length;
+		let sEfmValueIDs = await this.getValueIDs();
+		let sEnergyPathHistory = await this.getEnergyPathHistory();
+		let iValueIDsArrayLen = sEfmValueIDs.length;
 		let sEfmCurrPath = '';
-		const vCalcDate = [];
-		const now = [];
-		const newDate = new Date();
+		let vCalcDate = [];
+		let now = [];
+		let newDate = new Date();
 		newDate.setHours(0,0,30,0);
 		// Aktuelle Werte für den Datumsvergleich setzen
 		for (let xa = 0; xa < iPathArrayLen; xa++) {
@@ -400,13 +401,13 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async calcValues(p1FloatPvPower, p1FloatLoad, p1FloatExport, p1FloatImport, p1FloatBatCharge, p1FloatBatDischarge, pEfmValues) {
-		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
-		const iPathArrayLen = pEfmPathTimePeriod.length;
-		const sEfmValueIDs = await this.getValueIDs();
-		const iValueIDsArrayLen = sEfmValueIDs.length;
-		const vEfmCalcValues = [[],[],[]];
+		let pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
+		let iPathArrayLen = pEfmPathTimePeriod.length;
+		let sEfmValueIDs = await this.getValueIDs();
+		let iValueIDsArrayLen = sEfmValueIDs.length;
+		let vEfmCalcValues = [[],[],[]];
 		let vEnergyDivisor = 0;
-		let updateRate = this.config.updateInterval;
+		let updateRate = parseInt(this.config.updateInterval);
 		if ((updateRate == 0) || (updateRate == null)) {
 			updateRate = 2;
 		}
@@ -477,11 +478,11 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async writeValues(pEfmCalcValues) {
-		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
-		const iPathArrayLen = pEfmPathTimePeriod.length;
-		const sEfmValueIDs = await this.getValueIDs();
-		const iValueIDsArrayLen = sEfmValueIDs.length;
-		const sEnergyPathLive = await this.getEnergyPathLive();
+		let pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
+		let iPathArrayLen = pEfmPathTimePeriod.length;
+		let sEfmValueIDs = await this.getValueIDs();
+		let iValueIDsArrayLen = sEfmValueIDs.length;
+		let sEnergyPathLive = await this.getEnergyPathLive();
 		let sEfmCurrPath = '';
 		// Werte schreiben
 		for (let xe = 0; xe < iPathArrayLen; xe++) {
@@ -500,7 +501,7 @@ class EnergyFlowMotion extends utils.Adapter {
 
 	async initPowerControlChannels() {
 		this.log.info('PowerControlInitChannels started');
-		const cfgTable = this.config.powerControlChannels;
+		let cfgTable = this.config.powerControlChannels;
 		let counter = 0;
 		await this.setStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad', {val: 0, ack: true});
 		if (this.supportsFeature && this.supportsFeature('ADAPTER_DEL_OBJECT_RECURSIVE')) {
@@ -508,8 +509,8 @@ class EnergyFlowMotion extends utils.Adapter {
 		}
 		if (cfgTable && Array.isArray(cfgTable)) {
 			this.log.info('PowerControlInitChannels started');
-			for (const p in cfgTable) {
-				const cfgTableEntry = cfgTable[p];
+			for (let p in cfgTable) {
+				let cfgTableEntry = cfgTable[p];
 				//ToDo: Fehlermeldung für leeren Title einbauen
 				if (cfgTableEntry.pwcChannelTitle) {
 					this.log.info('PowerControlInitChannel: ' + cfgTableEntry.pwcChannelTitle);
@@ -634,21 +635,21 @@ class EnergyFlowMotion extends utils.Adapter {
 		if (this.config.powerControlActive) {
 			let powerBudget = await this.calcPowerBudget(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge);
 			//this.log.info('Powerbudget: '+powerBudget);
-			const cfgTable = this.config.powerControlChannels;
+			let cfgTable = this.config.powerControlChannels;
 			let sumPowerConsumption = 0;
 			let dynamicLoadDecreaseActive = false;
 			//Check if Powercontrolchannels exists in the setup
 			if (cfgTable && Array.isArray(cfgTable)) {
 				//powerBudget > 0, activate loadPowerChannels to consume the energy
 				if (powerBudget > 0) {
-					for (const p in cfgTable) {
-						const cfgTableEntry = cfgTable[p];
+					for (let p in cfgTable) {
+						let cfgTableEntry = cfgTable[p];
 						if (cfgTableEntry.pwcChannelEnabled) {
-							const maxPower = cfgTableEntry.pwcChannelMaxPower;
-							const minPower = cfgTableEntry.pwcChannelMinPower;
-							const powerStepSize = cfgTableEntry.pwcChannelStepSize;
-							const shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
-							const activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
+							let maxPower = cfgTableEntry.pwcChannelMaxPower;
+							let minPower = cfgTableEntry.pwcChannelMinPower;
+							let powerStepSize = cfgTableEntry.pwcChannelStepSize;
+							let shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
+							let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
 							//current channel active power consumption = 0
 							if (activePowerConsumptionValue == 0) {
 								// static channel
@@ -677,7 +678,7 @@ class EnergyFlowMotion extends utils.Adapter {
 							} else if ((maxPower > minPower) && (powerStepSize > 0)) {
 								if (powerStepSize <= powerBudget) {
 									// increase powerconsumption of dynamic channel
-									const newPowerConsumption = await this.increasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,maxPower,shutdownDelay,powerBudget);
+									let newPowerConsumption = await this.increasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,maxPower,shutdownDelay,powerBudget);
 									powerBudget -= newPowerConsumption;
 									sumPowerConsumption += newPowerConsumption;
 								} else {
@@ -693,15 +694,15 @@ class EnergyFlowMotion extends utils.Adapter {
 				}
 				// decrease or deactivate the powerconsumption of dynamic or static powerChannels
 				else if (powerBudget < 0) {
-					const tabelCounter = cfgTable.length;
+					let tabelCounter = cfgTable.length;
 					for (let i = tabelCounter - 1; i >= 0; i--) {
-						const cfgTableEntry = cfgTable[i];
+						let cfgTableEntry = cfgTable[i];
 						if (cfgTableEntry.pwcChannelEnabled) {
-							const maxPower = cfgTableEntry.pwcChannelMaxPower;
-							const minPower = cfgTableEntry.pwcChannelMinPower;
-							const powerStepSize = cfgTableEntry.pwcChannelStepSize;
-							//const shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
-							const activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
+							let maxPower = cfgTableEntry.pwcChannelMaxPower;
+							let minPower = cfgTableEntry.pwcChannelMinPower;
+							let powerStepSize = cfgTableEntry.pwcChannelStepSize;
+							//let shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
+							let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
 							if (activePowerConsumptionValue > 0) {
 								if ((maxPower == minPower) && (powerStepSize == 0)) {
 									if (dynamicLoadDecreaseActive == false) {
@@ -716,7 +717,7 @@ class EnergyFlowMotion extends utils.Adapter {
 								} else if ((maxPower > minPower) && (powerStepSize > 0)) {
 									dynamicLoadDecreaseActive = true;
 									if (activePowerConsumptionValue > minPower) {
-										const newPowerConsumption = await this.decreasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,minPower,powerBudget);
+										let newPowerConsumption = await this.decreasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,minPower,powerBudget);
 										powerBudget += newPowerConsumption;
 										sumPowerConsumption += newPowerConsumption;
 									} else {
@@ -742,10 +743,10 @@ class EnergyFlowMotion extends utils.Adapter {
 
 	async activatePwcChannel(pwcChannelTitle,powerValue,shutdownDelay) {
 		let activationDelayValue = await this.getPwcActivationDelay(pwcChannelTitle);
-		//const updateInterval = parseInt(this.config.updateInterval);
+		//let updateInterval = parseInt(this.config.updateInterval);
 		if (activationDelayValue <= 0) {
 			this.log.debug('activate pwc');
-			const shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
+			let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue', {val: powerValue, ack: true});
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerOn', {val: true, ack: true});
 			if (shutdownDelay > shutdownDelayValue) {
@@ -761,8 +762,8 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async increasePowerPwcChannel(pwcChannelTitle,powerStepSize,maxPower,shutdownDelay,powerBudget) {
-		const shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
-		const activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(pwcChannelTitle);
+		let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
+		let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(pwcChannelTitle);
 		let powerTarget = 0;
 		while (powerTarget + powerStepSize <= powerBudget) {
 			powerTarget += powerStepSize;
@@ -779,7 +780,7 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async decreasePowerPwcChannel(pwcChannelTitle,powerStepSize,minPower,powerBudget) {
-		const activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(pwcChannelTitle);
+		let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(pwcChannelTitle);
 		let powerTarget = 0;
 		while (powerTarget >= powerBudget) {
 			powerTarget -= powerStepSize;
@@ -797,8 +798,8 @@ class EnergyFlowMotion extends utils.Adapter {
 
 	async deactivatePwcChannel(pwcChannelTitle) {
 		let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
-		const updateInterval = parseInt(this.config.updateInterval);
-		const activationDelay = parseInt(this.config.powerControlActivationDelay);
+		let updateInterval = parseInt(this.config.updateInterval);
+		let activationDelay = parseInt(this.config.powerControlActivationDelay);
 		if (shutdownDelayValue - updateInterval > 0) {
 			shutdownDelayValue -= updateInterval;
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay', {val: shutdownDelayValue, ack: true});
@@ -891,10 +892,22 @@ class EnergyFlowMotion extends utils.Adapter {
 
 	async resetShutdownDelays(cfgTable) {
 		if (cfgTable && Array.isArray(cfgTable)) {
-			for (const p in cfgTable) {
-				const cfgTableEntry = cfgTable[p];
+			for (let p in cfgTable) {
+				let cfgTableEntry = cfgTable[p];
 				if (cfgTableEntry.pwcChannelEnabled) {
 					await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.shutdownDelay', {val: parseInt(cfgTableEntry.pwcChannelShutdownDelay), ack: true});
+				}
+			}
+
+		}
+	}
+
+	async resetActivationDelays(cfgTable) {
+		if (cfgTable && Array.isArray(cfgTable)) {
+			for (let p in cfgTable) {
+				let cfgTableEntry = cfgTable[p];
+				if (cfgTableEntry.pwcChannelEnabled) {
+					await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.activationDelay', {val: parseFloat(this.config.powerControlActivationDelay), ack: true});
 				}
 			}
 

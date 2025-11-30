@@ -79,7 +79,11 @@
         "updateInterval": "2",
         "batteryExists": "false",
 		"importThreshold": "50",
-		"exportThreshold": "50"
+		"exportThreshold": "50",
+		"powerControlActivationDelay": "1",
+		"powerControlActive": "false",
+		"energyCounterMonthActive": "false",
+		"energyCounterYearActive": "false"
     },
     "objects": [],
     "instanceObjects": [
