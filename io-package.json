@@ -83,7 +83,43 @@
 		"powerControlActivationDelay": "1",
 		"powerControlActive": "false",
 		"energyCounterMonthActive": "false",
-		"energyCounterYearActive": "false"
+		"energyCounterYearActive": "false",
+		"pvPowerDataTable": {
+			"pwrObjectId": "",
+			"pwrFactor": "1"
+		},
+		"loadDataTable": {
+			"pwrObjectId": "",
+			"pwrFactor": "1"
+		},
+		"importDataTable": {
+			"pwrObjectId": "",
+			"pwrFactor": "1"
+		},
+		"exportDataTable": {
+			"pwrObjectId": "",
+			"pwrFactor": "1"
+		},
+		"batChargeDataTable": {
+			"pwrObjectId": "",
+			"pwrFactor": "1"
+		},
+		"batDischargeDataTable": {
+			"pwrObjectId": "",
+			"pwrFactor": "1"
+		},
+		"batSoCDataTable": {
+			"socObjectId": ""
+		},
+		"powerControlChannels": {
+			"pwcChannelEnabled": "false",
+			"pwcChannelTitle": "CH(x)",
+			"pwcChannelDescription": "",
+			"pwcChannelMaxPower": "",
+			"pwcChannelMinPower": "",
+			"pwcChannelStepSize": "",
+			"pwcChannelShutdownDelay": "10"
+		}
     },
     "objects": [],
     "instanceObjects": [
