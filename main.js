@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 'use strict';
 
 /*
@@ -6,8 +7,8 @@
 
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
-import utils from '@iobroker/adapter-core';
-//const utils = require('@iobroker/adapter-core');
+//import utils from '@iobroker/adapter-core';
+const utils = require('@iobroker/adapter-core');
 
 // Load your modules here, e.g.:
 // const fs = require("fs");
