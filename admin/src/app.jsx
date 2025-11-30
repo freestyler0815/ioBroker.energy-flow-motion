@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import React from 'react';
 import { withStyles } from '@material-ui/core/styles';
 
@@ -18,8 +19,8 @@ class App extends GenericApp {
 			...props,
 			encryptedFields: [],
 			translations: {
-				//'en': require('./i18n/en.json'),
-				/*'de': require('./i18n/de.json'),
+				'en': require('./i18n/en.json'),
+				'de': require('./i18n/de.json'),
 				'ru': require('./i18n/ru.json'),
 				'pt': require('./i18n/pt.json'),
 				'nl': require('./i18n/nl.json'),
@@ -28,18 +29,7 @@ class App extends GenericApp {
 				'es': require('./i18n/es.json'),
 				'pl': require('./i18n/pl.json'),
 				'uk': require('./i18n/uk.json'),
-				'zh-cn': require('./i18n/zh-cn.json'),*/
-				'en': import ('./i18n/en.json'),
-				'de': import ('./i18n/de.json'),
-				'ru': import ('./i18n/ru.json'),
-				'pt': import ('./i18n/pt.json'),
-				'nl': import ('./i18n/nl.json'),
-				'fr': import ('./i18n/fr.json'),
-				'it': import ('./i18n/it.json'),
-				'es': import ('./i18n/es.json'),
-				'pl': import ('./i18n/pl.json'),
-				'uk': import ('./i18n/uk.json'),
-				'zh-cn': import ('./i18n/zh-cn.json')
+				'zh-cn': require('./i18n/zh-cn.json')
 			},
 		};
 		super(props, extendedProps);
