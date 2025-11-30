@@ -9,7 +9,9 @@
 
 // tslint:disable:no-unused-expression
 
-const { expect } = require('chai');
+//const { expect } = require('chai');
+import { expect } from 'chai';
+
 // import { functionToTest } from "./moduleToTest";
 
 describe('module to test => function to test', () => {

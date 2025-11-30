@@ -6,14 +6,15 @@
 
 // The adapter-core module gives you access to the core ioBroker functions
 // you need to create an adapter
-const utils = require('@iobroker/adapter-core');
+import utils from '@iobroker/adapter-core';
+//const utils = require('@iobroker/adapter-core');
 
 // Load your modules here, e.g.:
 // const fs = require("fs");
 
 class EnergyFlowMotion extends utils.Adapter {
 
-	intervalId; 
+	intervalId;
 	refreshRate;
 
 	/**
@@ -41,7 +42,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		this.intervalId = this.setInterval( async () => {
 			await this.updateValues();
 		},this.refreshRate);
-		
+
 		// Initialize your adapter here
 
 		// The adapters config (in the instance object everything under the attribute "native") is accessible via
@@ -96,8 +97,8 @@ class EnergyFlowMotion extends utils.Adapter {
 		//this.log.info('check group user admin group admin: ' + result);
 
 	}
-	
-	async updateValues() {			
+
+	async updateValues() {
 		//this.log.info('RefreshRate:' + this.refreshRate);
 		let pvPwrValue = 0, loadPwrValur = 0, exportPwrValue = 0, importPwrValue = 0, batChargePwrValue = 0, batDischargePwrValue = 0, batSoCValue = 0;
 		pvPwrValue = await this.getPvPowerSumValue();
@@ -111,7 +112,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		if ((exportPwrValue > 0) && (importPwrValue >0)) {
 			if (exportPwrValue >= importPwrValue) {
 				importPwrValue = 0;
-			} 
+			}
 			else {
 				exportPwrValue = 0;
 			}
@@ -139,56 +140,56 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async getPvPowerSumValue(){
-		let pwrValue = await this.getSumValuesFromCfgTables(this.config.pvPowerDataTable);
+		const pwrValue = await this.getSumValuesFromCfgTables(this.config.pvPowerDataTable);
 		this.log.debug('PvPowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getLoadPowerSumValue(){
-		let pwrValue = await this.getSumValuesFromCfgTables(this.config.loadDataTable);
+		const pwrValue = await this.getSumValuesFromCfgTables(this.config.loadDataTable);
 		this.log.debug('LoadPowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getGridImportPowerSumValue(){
-		let pwrValue = await this.getSumValuesFromCfgTables(this.config.importDataTable);
+		const pwrValue = await this.getSumValuesFromCfgTables(this.config.importDataTable);
 		this.log.debug('ImportPowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getGridExportPowerSumValue(){
-		let pwrValue = await this.getSumValuesFromCfgTables(this.config.exportDataTable);
+		const pwrValue = await this.getSumValuesFromCfgTables(this.config.exportDataTable);
 		this.log.debug('ExportPowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getBatteryChargePowerSumValue(){
-		let pwrValue = await this.getSumValuesFromCfgTables(this.config.batChargeDataTable);
+		const pwrValue = await this.getSumValuesFromCfgTables(this.config.batChargeDataTable);
 		this.log.debug('BatChargePowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getBatteryDischargePowerSumValue(){
-		let pwrValue = await this.getSumValuesFromCfgTables(this.config.batDischargeDataTable);
+		const pwrValue = await this.getSumValuesFromCfgTables(this.config.batDischargeDataTable);
 		this.log.debug('BatDischargePowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getBatterySoCSumValue(){
-		let cfgTable = this.config.batSoCDataTable;
+		const cfgTable = this.config.batSoCDataTable;
 		let socValue = 0;
 		let counter = 0;
 		if (cfgTable && Array.isArray(cfgTable)) {
 			for (const p in cfgTable) {
 				const cfgTableEntry = cfgTable[p];
 				if (cfgTableEntry.socObjectId) {
-					let socObjId = cfgTableEntry.socObjectId;
+					const socObjId = cfgTableEntry.socObjectId;
 					try {
-						let socState = await this.getForeignStateAsync(socObjId);
-						if (socState.val != null) {							
+						const socState = await this.getForeignStateAsync(socObjId);
+						if (socState.val != null) {
 							socValue += parseFloat(socState.val);
 							counter += 1;
-						}						
+						}
 					} catch (error) {
 						this.log.error(error);
 					}
@@ -207,150 +208,148 @@ class EnergyFlowMotion extends utils.Adapter {
 				const cfgTableEntry = cfgTable[p];
 				//this.log.info('Entry Selected');
 				if (cfgTableEntry.pwrObjectId) {
-					let pwrObjId = cfgTableEntry.pwrObjectId;
-					let pwrFactor = parseFloat(cfgTableEntry.pwrFactor);
+					const pwrObjId = cfgTableEntry.pwrObjectId;
+					const pwrFactor = parseFloat(cfgTableEntry.pwrFactor);
 					//this.log.info('Entry Read');
 					try {
-						let powerState = await this.getForeignStateAsync(pwrObjId);
+						const powerState = await this.getForeignStateAsync(pwrObjId);
 						if (powerState.val != null) {
 							if (isNaN(powerState.val)){
 								pwrValue = 0;
 							} else {
 								if ((parseFloat(powerState.val)*pwrFactor) < 0) {
-									this.log.debug('Value for ' + cfgTableEntry.pwrObjectId + ' is negative (Calculated Value is: ' + parseFloat(powerState.val)*pwrFactor +') setting Value to zero.');								
-								} 
-								pwrValue += parseFloat(powerState.val)*pwrFactor;														
+									this.log.debug('Value for ' + cfgTableEntry.pwrObjectId + ' is negative (Calculated Value is: ' + parseFloat(powerState.val)*pwrFactor +') setting Value to zero.');
+								}
+								pwrValue += parseFloat(powerState.val)*pwrFactor;
 								//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
 							}
-							
-						}						
+						}
 					} catch (error) {
 						this.log.error(error);
 					}
 				}
 			}
 			//this.log.info('ConfigTable: ' + cfgTable + ' , SumPowerRead:' + pwrValue);
-		}		
+		}
 		if (pwrValue < 0) {
-			return 0
-		} 
+			return 0;
+		}
 		else {
 			return pwrValue;
-		}		
+		}
 	}
 
 	async getEnergyCounterTimePeriod() {
-		var sEfmPathTimePeriod = ["day"];
+		const sEfmPathTimePeriod = ['day'];
 		if (this.config.energyCounterMonthActive) {
-			sEfmPathTimePeriod.push("month");
+			sEfmPathTimePeriod.push('month');
 		}
 		if (this.config.energyCounterYearActive) {
-			sEfmPathTimePeriod.push("year");
+			sEfmPathTimePeriod.push('year');
 		}
-		return sEfmPathTimePeriod;		
+		return sEfmPathTimePeriod;
 	}
 
 	async getValueIDs() {
-		const sEfmValueIDs = new Array("date","load","pv","export","import","selfConsumption","batteryDischarge","batteryCharge","selfConsumptionQuota","autarchyQuota");
+		const sEfmValueIDs = ['date','load','pv','export','import','selfConsumption','batteryDischarge','batteryCharge','selfConsumptionQuota','autarchyQuota'];
 		return sEfmValueIDs;
 	}
 
 	async getEnergyPathLive() {
-		var sPathEnergyValues = this.namespace + '.energy.live';
+		const sPathEnergyValues = this.namespace + '.energy.live';
 		return sPathEnergyValues;
 	}
 
 	async getEnergyPathHistory() {
-		var sPathEnergyValues = this.namespace + '.energy.history';
+		const sPathEnergyValues = this.namespace + '.energy.history';
 		return sPathEnergyValues;
 	}
 
-	async efmCalcEnergyHistory (pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge)  {				
+	async efmCalcEnergyHistory (pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge)  {
 		// aktuelle Energiezählerstände einlesen
-		var vEfmValues = await this.readValues();
+		let vEfmValues = await this.readValues();
 		// Zählerstandhistorie managen (Tageswechsel etc. historische Zählerstände neu schreiben)
 		vEfmValues = await this.historyManage(vEfmValues);
 		// aktuelle Zählerstände berechnen
-		var vEfmCalcValues = await this.calcValues(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge,vEfmValues);
+		const vEfmCalcValues = await this.calcValues(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge,vEfmValues);
 		// Zählerstände in States schreiben
 		await this.writeValues(vEfmCalcValues);
 	}
 
 	async readValues() {
 		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
-		const sPathEnergyValues = await this.getEnergyPathLive();	
-		let iPathArrayLen = pEfmPathTimePeriod.length;
-		var vEfmValues = [[],[],[]];
-		var sEfmCurrPath = '';
+		const sPathEnergyValues = await this.getEnergyPathLive();
+		const iPathArrayLen = pEfmPathTimePeriod.length;
+		const vEfmValues = [[],[],[]];
+		let sEfmCurrPath = '';
 		const sEfmValueIDs = await this.getValueIDs();
-		let iValueIDsArrayLen = sEfmValueIDs.length;
+		const iValueIDsArrayLen = sEfmValueIDs.length;
 		// Alle aktuellen Werte abrufen
-		for (var x = 0; x < iPathArrayLen; x++) {
+		for (let x = 0; x < iPathArrayLen; x++) {
 			sEfmCurrPath = sPathEnergyValues + '.' + pEfmPathTimePeriod[x] + '.';
 			this.log.debug('Path for loading Values:' + sEfmCurrPath);
-			for (var y = 0; y < iValueIDsArrayLen; y++) {        
+			for (let y = 0; y < iValueIDsArrayLen; y++) {
 				this.log.debug('Path for Value:' + sEfmCurrPath + sEfmValueIDs[y]);
 				try {
-					let stateObject = await this.getStateAsync(sEfmCurrPath + sEfmValueIDs[y]);
+					const stateObject = await this.getStateAsync(sEfmCurrPath + sEfmValueIDs[y]);
 					if (stateObject.val != null) {
 						if (sEfmValueIDs[y] == 'date') {
 							vEfmValues[x][y] = new Date (stateObject.val);
 						} else {
 							vEfmValues[x][y] = stateObject.val;
-						};											
+						}
 						//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
-					}						
+					}
 				} catch (error) {
 					this.log.error(error);
-				}				
+				}
 				//if (stateObject) {
 
 				//if (vEfmValues[x][y] == 0) { !! An dieser Stelle nur die kWh Load und Import Werte abfragen
-				//  log('Read value is 0 :' + sEfmCurrPath + sEfmValueIDs[y], 'warn');  
+				//  log('Read value is 0 :' + sEfmCurrPath + sEfmValueIDs[y], 'warn');
 				//}
 				//} else {
 				//  vEfmValues[x][y] = 0;
 				//  log('Unable to get state value of ' + sEfmCurrPath + sEfmValueIDs[y] + '. ' + JSON.stringify(stateObject), 'warn');
 				//};
-			};
-		};
+			}
+		}
 		return vEfmValues;
 	}
 
-	async historyManage(pEfmValues) {		
-		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();		
-		let iPathArrayLen = pEfmPathTimePeriod.length;
+	async historyManage(pEfmValues) {
+		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
+		const iPathArrayLen = pEfmPathTimePeriod.length;
 		const sEfmValueIDs = await this.getValueIDs();
 		const sEnergyPathHistory = await this.getEnergyPathHistory();
-		let iValueIDsArrayLen = sEfmValueIDs.length;
-		var sEfmCurrPath = '';
-		var newDate;
-		var vCalcDate = [];
-		var now = [];	
-		newDate = new Date();
+		const iValueIDsArrayLen = sEfmValueIDs.length;
+		let sEfmCurrPath = '';
+		const vCalcDate = [];
+		const now = [];
+		const newDate = new Date();
 		newDate.setHours(0,0,30,0);
-		// Aktuelle Werte für den Datumsvergleich setzen	
-		for (var xa = 0; xa < iPathArrayLen; xa++) {
+		// Aktuelle Werte für den Datumsvergleich setzen
+		for (let xa = 0; xa < iPathArrayLen; xa++) {
 			now[xa] = new Date();
 			//now[xa].setHours(0,0,30,0);
-		}			
-		for (var xb = 0; xb < iPathArrayLen; xb++) {
+		}
+		for (let xb = 0; xb < iPathArrayLen; xb++) {
 			vCalcDate[xb] = new Date (pEfmValues[xb][0].valueOf());
 			//vCalcDate[xb] = new Date (JSON.parse(pEfmValues[xb][0]));
 		}
 		vCalcDate[0].setDate(vCalcDate[0].getDate() + 1);
-		if (this.config.energyCounterMonthActive) {			
+		if (this.config.energyCounterMonthActive) {
 			now[1].setDate(1);
 			vCalcDate[1].setDate(1);
-			vCalcDate[1].setMonth(vCalcDate[1].getMonth() + 1);			
+			vCalcDate[1].setMonth(vCalcDate[1].getMonth() + 1);
 		}
 		if (this.config.energyCounterYearActive) {
 			now[2].setDate(1);
 			now[2].setMonth(0);
 			vCalcDate[2].setDate(1);
 			vCalcDate[2].setMonth(0);
-			vCalcDate[2].setFullYear(vCalcDate[2].getFullYear() + 1);			
-		}	
+			vCalcDate[2].setFullYear(vCalcDate[2].getFullYear() + 1);
+		}
 
 		/*
 		log('Value of now: ' + now.toString(),'info');
@@ -362,21 +361,21 @@ class EnergyFlowMotion extends utils.Adapter {
 		*/
 
 		// Reset Counters and write History
-		for (var xc = 0; xc < iPathArrayLen; xc++) {
+		for (let xc = 0; xc < iPathArrayLen; xc++) {
 			sEfmCurrPath = sEnergyPathHistory + '.' + pEfmPathTimePeriod[xc] + '.';
 			if (now[xc].valueOf() >= vCalcDate[xc].valueOf()) {
 				this.log.debug('now[' + xc.toString() + '] and vCalcDate[' + xc.toString() + ']: ' + now[xc].toString() + ' and ' + vCalcDate[xc].toString());
-				for (var yc = 0; yc < iValueIDsArrayLen; yc++) {            
+				for (let yc = 0; yc < iValueIDsArrayLen; yc++) {
 					if (sEfmValueIDs[yc] == 'date') {
 						this.log.debug('sEfmCurrPath: ' + sEfmCurrPath + sEfmValueIDs[yc] + ' sEfmValueIDs[' + yc.toString() +']:' + sEfmValueIDs[yc] + 'Value: ' + pEfmValues[xc][yc].valueOf());
 						try {
 							//await this.setStateAsync(sEfmCurrPath + sEfmValueIDs[yc],JSON.stringify(pEfmValues[xc][yc]),true);
 							await this.setStateAsync(sEfmCurrPath + sEfmValueIDs[yc],pEfmValues[xc][yc].valueOf(),true);
-						} 
+						}
 						catch(error) {
 							this.log.error(error);
-						}						
-						
+						}
+
 					} else {
 						this.log.debug('sEfmCurrPath: ' + sEfmCurrPath + sEfmValueIDs[yc] + ' sEfmValueIDs[' + yc.toString() +']:' + sEfmValueIDs[yc] + 'Value: ' + pEfmValues[xc][yc]);
 						try {
@@ -384,94 +383,94 @@ class EnergyFlowMotion extends utils.Adapter {
 						}
 						catch(error) {
 							this.log.error(error);
-						}						
-					}            
+						}
+					}
 					if (sEfmValueIDs[yc] == 'date') {
 						pEfmValues[xc][yc] = newDate;
 						this.log.debug('sEfmCurrPath: ' + sEfmCurrPath + sEfmValueIDs[yc] + ' sEfmValueIDs[' + yc.toString() +']:' + sEfmValueIDs[yc] + 'Value: ' + pEfmValues[xc][yc].toString());
 					} else {
-					pEfmValues[xc][yc] = 0;
-					};
-				};
+						pEfmValues[xc][yc] = 0;
+					}
+				}
 				this.log.debug('Reset ' + pEfmPathTimePeriod[xc] + ' Counter executed');
-			};
-		};
+			}
+		}
 		return pEfmValues;
 	}
 
 	async calcValues(p1FloatPvPower, p1FloatLoad, p1FloatExport, p1FloatImport, p1FloatBatCharge, p1FloatBatDischarge, pEfmValues) {
 		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
 		const iPathArrayLen = pEfmPathTimePeriod.length;
-		const sEfmValueIDs = await this.getValueIDs();		
+		const sEfmValueIDs = await this.getValueIDs();
 		const iValueIDsArrayLen = sEfmValueIDs.length;
-		var vEfmCalcValues = [[],[],[]];	
-		var vEnergyDivisor = 0;
-		var updateRate = this.config.updateInterval;
+		const vEfmCalcValues = [[],[],[]];
+		let vEnergyDivisor = 0;
+		let updateRate = this.config.updateInterval;
 		if ((updateRate == 0) || (updateRate == null)) {
 			updateRate = 2;
-		};
+		}
 		vEnergyDivisor = 3600 / updateRate;
 		// Werte berechnen
-		for (var xd = 0; xd < iPathArrayLen; xd++) {
-			for (var yd = 0; yd < iValueIDsArrayLen; yd++) {
+		for (let xd = 0; xd < iPathArrayLen; xd++) {
+			for (let yd = 0; yd < iValueIDsArrayLen; yd++) {
 				switch(sEfmValueIDs[yd]) {
 					case 'date':
-					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd].valueOf();
-					break;
+						vEfmCalcValues[xd][yd] = pEfmValues[xd][yd].valueOf();
+						break;
 					case 'load':
-					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatLoad / vEnergyDivisor);
-					break;
+						vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatLoad / vEnergyDivisor);
+						break;
 					case 'pv':
-					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatPvPower / vEnergyDivisor);
-					break;
+						vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatPvPower / vEnergyDivisor);
+						break;
 					case 'export':
-					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatExport / vEnergyDivisor);
-					break;
+						vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatExport / vEnergyDivisor);
+						break;
 					case 'import':
-					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatImport/ vEnergyDivisor);
-					break;
+						vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatImport/ vEnergyDivisor);
+						break;
 					case 'selfConsumption':
-					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + ((p1FloatPvPower - p1FloatExport) / vEnergyDivisor);
-					if (vEfmCalcValues[xd][yd] < 0) {
-						vEfmCalcValues[xd][yd] = 0;
-					};
-					break;
+						vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + ((p1FloatPvPower - p1FloatExport) / vEnergyDivisor);
+						if (vEfmCalcValues[xd][yd] < 0) {
+							vEfmCalcValues[xd][yd] = 0;
+						}
+						break;
 					case 'batteryDischarge':
-					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatBatDischarge / vEnergyDivisor);
-					break;
+						vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatBatDischarge / vEnergyDivisor);
+						break;
 					case 'batteryCharge':
-					vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatBatCharge / vEnergyDivisor);
-					break;
+						vEfmCalcValues[xd][yd] = pEfmValues[xd][yd] + (p1FloatBatCharge / vEnergyDivisor);
+						break;
 					case 'selfConsumptionQuota':
-					if (pEfmValues[xd][2] == 0 ) {
-						vEfmCalcValues[xd][yd] = 0;
-					} else {
-						vEfmCalcValues[xd][yd] = (pEfmValues[xd][5] / pEfmValues[xd][2] * 100);
-						if (vEfmCalcValues[xd][yd] > 100) {
-							vEfmCalcValues[xd][yd] = 100;
-						};
-						if (vEfmCalcValues[xd][yd] < 0) {
+						if (pEfmValues[xd][2] == 0 ) {
 							vEfmCalcValues[xd][yd] = 0;
-						};
-					};
-					break;
+						} else {
+							vEfmCalcValues[xd][yd] = (pEfmValues[xd][5] / pEfmValues[xd][2] * 100);
+							if (vEfmCalcValues[xd][yd] > 100) {
+								vEfmCalcValues[xd][yd] = 100;
+							}
+							if (vEfmCalcValues[xd][yd] < 0) {
+								vEfmCalcValues[xd][yd] = 0;
+							}
+						}
+						break;
 					case 'autarchyQuota':
-					if (pEfmValues[xd][1] == 0){
-						vEfmCalcValues[xd][yd] = 100;
-					} else {
-						vEfmCalcValues[xd][yd] = (100 - (pEfmValues[xd][4] / pEfmValues[xd][1] * 100));
-						if (vEfmCalcValues[xd][yd] > 100) {
+						if (pEfmValues[xd][1] == 0){
 							vEfmCalcValues[xd][yd] = 100;
-						};
-						if (vEfmCalcValues[xd][yd] < 0) {
-							vEfmCalcValues[xd][yd] = 0;
-						};
-					};
-					break;
-				};
-				//this.log.debug('ValueID: ' + sEfmValueIDs[yd] + ' (sEfmValueIDs[' + yd.toString() +']) Value: ' + pEfmValues[xd][yd].valueOf());				
-			};
-		};
+						} else {
+							vEfmCalcValues[xd][yd] = (100 - (pEfmValues[xd][4] / pEfmValues[xd][1] * 100));
+							if (vEfmCalcValues[xd][yd] > 100) {
+								vEfmCalcValues[xd][yd] = 100;
+							}
+							if (vEfmCalcValues[xd][yd] < 0) {
+								vEfmCalcValues[xd][yd] = 0;
+							}
+						}
+						break;
+				}
+				//this.log.debug('ValueID: ' + sEfmValueIDs[yd] + ' (sEfmValueIDs[' + yd.toString() +']) Value: ' + pEfmValues[xd][yd].valueOf());
+			}
+		}
 		//this.log.debug("calcvalues executed");
 		return vEfmCalcValues;
 	}
@@ -479,28 +478,28 @@ class EnergyFlowMotion extends utils.Adapter {
 	async writeValues(pEfmCalcValues) {
 		const pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
 		const iPathArrayLen = pEfmPathTimePeriod.length;
-		const sEfmValueIDs = await this.getValueIDs();		
-		const iValueIDsArrayLen = sEfmValueIDs.length;		
+		const sEfmValueIDs = await this.getValueIDs();
+		const iValueIDsArrayLen = sEfmValueIDs.length;
 		const sEnergyPathLive = await this.getEnergyPathLive();
 		let sEfmCurrPath = '';
 		// Werte schreiben
-		for (var xe = 0; xe < iPathArrayLen; xe++) {
+		for (let xe = 0; xe < iPathArrayLen; xe++) {
 			sEfmCurrPath = sEnergyPathLive + '.' + pEfmPathTimePeriod[xe] + '.';
-			for (var ye = 0; ye < iValueIDsArrayLen; ye++) {
+			for (let ye = 0; ye < iValueIDsArrayLen; ye++) {
 				try {
 					await this.setStateAsync(sEfmCurrPath + sEfmValueIDs[ye],pEfmCalcValues[xe][ye],true);
 				}
 				catch(error) {
 					this.log.error(error + ' ValueID: ' + sEfmValueIDs[ye] + ' Value: ' + pEfmCalcValues[xe][ye]);
 				}
-			};
-		};
-		this.log.debug("writevalues executed");
+			}
+		}
+		this.log.debug('writevalues executed');
 	}
 
 	async initPowerControlChannels() {
 		this.log.info('PowerControlInitChannels started');
-		let cfgTable = this.config.powerControlChannels;
+		const cfgTable = this.config.powerControlChannels;
 		let counter = 0;
 		await this.setStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad', {val: 0, ack: true});
 		if (this.supportsFeature && this.supportsFeature('ADAPTER_DEL_OBJECT_RECURSIVE')) {
@@ -509,7 +508,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		if (cfgTable && Array.isArray(cfgTable)) {
 			this.log.info('PowerControlInitChannels started');
 			for (const p in cfgTable) {
-				const cfgTableEntry = cfgTable[p];								
+				const cfgTableEntry = cfgTable[p];
 				//ToDo: Fehlermeldung für leeren Title einbauen
 				if (cfgTableEntry.pwcChannelTitle) {
 					this.log.info('PowerControlInitChannel: ' + cfgTableEntry.pwcChannelTitle);
@@ -536,7 +535,7 @@ class EnergyFlowMotion extends utils.Adapter {
 				write: true,
 			},
 			native: {},
-		});*/		
+		});*/
 		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels', {
 			type: 'folder',
 			common: {
@@ -547,7 +546,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle , {
 			type: 'folder',
 			common: {
-				name: cfgTableEntry.pwcChannelDescription							
+				name: cfgTableEntry.pwcChannelDescription
 			},
 			native: {},
 		});
@@ -618,7 +617,7 @@ class EnergyFlowMotion extends utils.Adapter {
 				write: true,
 			},
 			native: {},
-		});					
+		});
 		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.priority', {val: priority, ack: true});
 		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.active', {val: cfgTableEntry.pwcChannelEnabled, ack: true});
 		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerOn', {val: false, ack: true});
@@ -630,25 +629,25 @@ class EnergyFlowMotion extends utils.Adapter {
 	//this function is the main function to control the loadPowerChannels
 	async loadPowerControl(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge) {
 		//loadPowerControl active?
-		//this.log.info('loadPowerControl');		
+		//this.log.info('loadPowerControl');
 		if (this.config.powerControlActive) {
 			let powerBudget = await this.calcPowerBudget(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge);
 			//this.log.info('Powerbudget: '+powerBudget);
-			let cfgTable = this.config.powerControlChannels;
+			const cfgTable = this.config.powerControlChannels;
 			let sumPowerConsumption = 0;
 			let dynamicLoadDecreaseActive = false;
 			//Check if Powercontrolchannels exists in the setup
 			if (cfgTable && Array.isArray(cfgTable)) {
-				//powerBudget > 0, activate loadPowerChannels to consume the energy			
-				if (powerBudget > 0) {				
+				//powerBudget > 0, activate loadPowerChannels to consume the energy
+				if (powerBudget > 0) {
 					for (const p in cfgTable) {
 						const cfgTableEntry = cfgTable[p];
 						if (cfgTableEntry.pwcChannelEnabled) {
-							let maxPower = cfgTableEntry.pwcChannelMaxPower;
-							let minPower = cfgTableEntry.pwcChannelMinPower;
-							let powerStepSize = cfgTableEntry.pwcChannelStepSize;
-							let shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
-							let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
+							const maxPower = cfgTableEntry.pwcChannelMaxPower;
+							const minPower = cfgTableEntry.pwcChannelMinPower;
+							const powerStepSize = cfgTableEntry.pwcChannelStepSize;
+							const shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
+							const activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
 							//current channel active power consumption = 0
 							if (activePowerConsumptionValue == 0) {
 								// static channel
@@ -670,18 +669,18 @@ class EnergyFlowMotion extends utils.Adapter {
 										if (await this.activatePwcChannel(cfgTableEntry.pwcChannelTitle,powerTarget,shutdownDelay)) {
 											powerBudget -= powerTarget;
 											sumPowerConsumption += powerTarget;
-										}										
+										}
 									}
 								}
 							// powerChannel already active, check if it is a dynamic channel
 							} else if ((maxPower > minPower) && (powerStepSize > 0)) {
 								if (powerStepSize <= powerBudget) {
 									// increase powerconsumption of dynamic channel
-									let newPowerConsumption = await this.increasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,maxPower,shutdownDelay,powerBudget);
+									const newPowerConsumption = await this.increasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,maxPower,shutdownDelay,powerBudget);
 									powerBudget -= newPowerConsumption;
 									sumPowerConsumption += newPowerConsumption;
 								} else {
-									sumPowerConsumption += activePowerConsumptionValue;	
+									sumPowerConsumption += activePowerConsumptionValue;
 								}
 							} else {
 								sumPowerConsumption += activePowerConsumptionValue;
@@ -691,22 +690,22 @@ class EnergyFlowMotion extends utils.Adapter {
 					// set current sum of powerconsumption of all channels
 					await this.setStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad', {val: sumPowerConsumption, ack: true});
 				}
-				// decrease or deactivate the powerconsumption of dynamic or static powerChannels 
+				// decrease or deactivate the powerconsumption of dynamic or static powerChannels
 				else if (powerBudget < 0) {
-					let tabelCounter = cfgTable.length;
+					const tabelCounter = cfgTable.length;
 					for (let i = tabelCounter - 1; i >= 0; i--) {
 						const cfgTableEntry = cfgTable[i];
 						if (cfgTableEntry.pwcChannelEnabled) {
-							let maxPower = cfgTableEntry.pwcChannelMaxPower;
-							let minPower = cfgTableEntry.pwcChannelMinPower;
-							let powerStepSize = cfgTableEntry.pwcChannelStepSize;
-							let shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
-							let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
+							const maxPower = cfgTableEntry.pwcChannelMaxPower;
+							const minPower = cfgTableEntry.pwcChannelMinPower;
+							const powerStepSize = cfgTableEntry.pwcChannelStepSize;
+							//const shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
+							const activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
 							if (activePowerConsumptionValue > 0) {
 								if ((maxPower == minPower) && (powerStepSize == 0)) {
-									if (dynamicLoadDecreaseActive == false) { 
+									if (dynamicLoadDecreaseActive == false) {
 										if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle)) {
-											powerBudget += activePowerConsumptionValue;										
+											powerBudget += activePowerConsumptionValue;
 										} else {
 											sumPowerConsumption += activePowerConsumptionValue;
 										}
@@ -716,7 +715,7 @@ class EnergyFlowMotion extends utils.Adapter {
 								} else if ((maxPower > minPower) && (powerStepSize > 0)) {
 									dynamicLoadDecreaseActive = true;
 									if (activePowerConsumptionValue > minPower) {
-										let newPowerConsumption = await this.decreasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,minPower,powerBudget);
+										const newPowerConsumption = await this.decreasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,minPower,powerBudget);
 										powerBudget += newPowerConsumption;
 										sumPowerConsumption += newPowerConsumption;
 									} else {
@@ -740,12 +739,12 @@ class EnergyFlowMotion extends utils.Adapter {
 		}
 	}
 
-	async activatePwcChannel(pwcChannelTitle,powerValue,shutdownDelay) {	
+	async activatePwcChannel(pwcChannelTitle,powerValue,shutdownDelay) {
 		let activationDelayValue = await this.getPwcActivationDelay(pwcChannelTitle);
-		let updateInterval = parseInt(this.config.updateInterval);
+		//const updateInterval = parseInt(this.config.updateInterval);
 		if (activationDelayValue <= 0) {
-			this.log.debug('activate pwc');					
-			let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
+			this.log.debug('activate pwc');
+			const shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue', {val: powerValue, ack: true});
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerOn', {val: true, ack: true});
 			if (shutdownDelay > shutdownDelayValue) {
@@ -755,14 +754,14 @@ class EnergyFlowMotion extends utils.Adapter {
 		} else {
 			this.log.debug('activation delay');
 			activationDelayValue -= 1;
-			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.activationDelay', {val: activationDelayValue, ack: true});			
+			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.activationDelay', {val: activationDelayValue, ack: true});
 			return false;
 		}
 	}
 
 	async increasePowerPwcChannel(pwcChannelTitle,powerStepSize,maxPower,shutdownDelay,powerBudget) {
-		let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
-		let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(pwcChannelTitle);
+		const shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
+		const activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(pwcChannelTitle);
 		let powerTarget = 0;
 		while (powerTarget + powerStepSize <= powerBudget) {
 			powerTarget += powerStepSize;
@@ -779,11 +778,11 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async decreasePowerPwcChannel(pwcChannelTitle,powerStepSize,minPower,powerBudget) {
-		let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(pwcChannelTitle);
-		let powerTarget = 0
+		const activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(pwcChannelTitle);
+		let powerTarget = 0;
 		while (powerTarget >= powerBudget) {
 			powerTarget -= powerStepSize;
-		}		
+		}
 		let newPowerConsumption = activePowerConsumptionValue + powerTarget;
 		if (newPowerConsumption < 0) {
 			newPowerConsumption = 0;
@@ -797,8 +796,8 @@ class EnergyFlowMotion extends utils.Adapter {
 
 	async deactivatePwcChannel(pwcChannelTitle) {
 		let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
-		let updateInterval = parseInt(this.config.updateInterval);
-		let activationDelay = parseInt(this.config.powerControlActivationDelay);
+		const updateInterval = parseInt(this.config.updateInterval);
+		const activationDelay = parseInt(this.config.powerControlActivationDelay);
 		if (shutdownDelayValue - updateInterval > 0) {
 			shutdownDelayValue -= updateInterval;
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay', {val: shutdownDelayValue, ack: true});
@@ -814,8 +813,8 @@ class EnergyFlowMotion extends utils.Adapter {
 
 	async getPwcActivePowerConsumptionValue(pwcChannelTitle) {
 		try {
-			let activePowerConsumption = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue');
-			if (activePowerConsumption.val != null) {							
+			const activePowerConsumption = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue');
+			if (activePowerConsumption.val != null) {
 				return parseFloat(activePowerConsumption.val);
 			} else {
 				return 0;
@@ -828,8 +827,8 @@ class EnergyFlowMotion extends utils.Adapter {
 
 	async getPwcShutDownDelay(pwcChannelTitle) {
 		try {
-			let shutdownDelay = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay');
-			if (shutdownDelay.val != null) {							
+			const shutdownDelay = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay');
+			if (shutdownDelay.val != null) {
 				return parseFloat(shutdownDelay.val);
 			} else {
 				return 0;
@@ -842,8 +841,8 @@ class EnergyFlowMotion extends utils.Adapter {
 
 	async getPwcActivationDelay(pwcChannelTitle) {
 		try {
-			let activationDelay = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.activationDelay');
-			if (activationDelay.val != null) {							
+			const activationDelay = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.activationDelay');
+			if (activationDelay.val != null) {
 				return parseFloat(activationDelay.val);
 			} else {
 				return 0;
@@ -852,12 +851,12 @@ class EnergyFlowMotion extends utils.Adapter {
 			this.log.error(error);
 			return 0;
 		}
-	}	
+	}
 
 	async getPwcSumActiveLoad() {
 		try {
-			let sumActiveLoad = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad');
-			if (sumActiveLoad.val != null) {							
+			const sumActiveLoad = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad');
+			if (sumActiveLoad.val != null) {
 				return parseFloat(sumActiveLoad.val);
 			} else {
 				return 0;
@@ -869,8 +868,8 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async calcPowerBudget(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge) {
-		let exportThreshold = parseFloat(this.config.exportThreshold)/1000;
-		let importThreshold = parseFloat(this.config.importThreshold)/1000;
+		const exportThreshold = parseFloat(this.config.exportThreshold)/1000;
+		const importThreshold = parseFloat(this.config.importThreshold)/1000;
 		if ((pFloatBatDischarge > 0) && (pFloatImport > importThreshold)) {
 			return (pFloatBatDischarge + pFloatImport)*-1;
 		}
@@ -890,11 +889,11 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async resetShutdownDelays(cfgTable) {
-		if (cfgTable && Array.isArray(cfgTable)) {			
+		if (cfgTable && Array.isArray(cfgTable)) {
 			for (const p in cfgTable) {
 				const cfgTableEntry = cfgTable[p];
-				if (cfgTableEntry.pwcChannelEnabled) {					
-					await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.shutdownDelay', {val: parseInt(cfgTableEntry.pwcChannelShutdownDelay), ack: true});					
+				if (cfgTableEntry.pwcChannelEnabled) {
+					await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.shutdownDelay', {val: parseInt(cfgTableEntry.pwcChannelShutdownDelay), ack: true});
 				}
 			}
 
@@ -903,12 +902,12 @@ class EnergyFlowMotion extends utils.Adapter {
 
 	leadingZero(num, size) {
 		num = num.toString();
-		while (num.length < size) num = "0" + num;
+		while (num.length < size) num = '0' + num;
 		return num;
 	}
 
-	
-	
+
+
 	/**
 	 * Is called when adapter shuts down - callback has to be called under any circumstances!
 	 * @param {() => void} callback
@@ -923,6 +922,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			this.clearInterval(this.intervalId);
 
 			callback();
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		} catch (e) {
 			callback();
 		}
