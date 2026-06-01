@@ -1,7 +1,7 @@
 {
   "name": "iobroker.energy-flow-motion",
-  "version": "0.0.3",
-  "description": "Capture, calculate and sum up power and energy data. Control energy consumption.",
+  "version": "0.0.4",
+  "description": "Capture, calculate and sum up power and energy data. Control energy consumption and energy storage.",
   "author": {
     "name": "Andre Silz",
     "email": "andre.silz@netboxmail.de"

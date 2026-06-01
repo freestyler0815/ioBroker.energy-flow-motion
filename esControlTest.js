@@ -1,0 +1,169 @@
+const exportThreshold = 250, importThreshold = 250, maxSbBatteryPower = 2950, maxKostalBatteryPower = 6600, maxSungrowBatteryPower = 10000, startChargePower = 0, startDischargePower = 0, sgBatteryRefreshPower = 1000;
+
+function ausfuehren() {
+
+	let sgOperationMode = 0, runningstate = 0, batterypower = 0, gridImport = 0, gridExport = 0, ioBrokerControl = 0, emsMode = 0, batteryState = 0, batterySoC = 0, targetBatteryPower = 0, sbChargePower = 0, kostalChargePower = 0, sbDischargePower = 0, kostalDischargePower = 0, controlSmoothVal = 0, calcTargetBatteryPower = 0, batteryDoC = 0, batPowerCorrection = 0, sgBatteryRefreshActive = false, veBatPower = 0;
+	const sungrowChargeBat = 170, sungrowDischargeBat = 187, sungrowStandby = 204, controlSmoothThreshold = 5, batteryFullSoC = 100;
+	runningstate = parseFloat((getState('modbus.0.inputRegisters.13000_Running_State').val));
+	batterypower = parseFloat((getState('modbus.0.inputRegisters.13021_Battery_power').val));
+	ioBrokerControl = getState('javascript.0.sungrow-iobroker-control'/*Sungrow Iobroker Steuerung*/).val;
+	gridExport = getState('plenticore.0.devices.local.ToGrid_P'/*Power sent to grid*/).val;
+	gridImport = getState('plenticore.0.devices.local.HomeGrid_P'/*Home Power from grid*/).val;
+	emsMode = getState('modbus.0.holdingRegisters.13049_EMS_mode_selection'/*EMS Modus*/).val;
+	batteryState = getState('modbus.0.holdingRegisters.13050_Charge/discharge_command'/*Ext  Sollvorgabe Laden170(AA)/ Stop204(BB)/ Entladen187(CC)*/).val;
+	batterySoC = parseFloat(getState('modbus.0.inputRegisters.13022_Battery_level'/*Batteriekapazität*/).val);
+	batteryDoC = parseFloat(getState('modbus.0.holdingRegisters.13099_SOC_Reserve'/*SOC Reserve*/).val);
+	//batteryDoC = 0; //0% da der Wechselrichter automatisch den DoC aus dem Holdingregister in die Berechnung des SoC mit einbezieht 0% SoC entsprechen dann dem eingestellen DoC z.B. 10%
+	targetBatteryPower = parseFloat((getState('modbus.0.holdingRegisters.13051_Charge/discharge_power'/*Ext  Sollvorgabe Lade/Entladeleistung*/).val));
+	veBatPower = parseFloat((getState('alias.0.mqtt.2.N.c0619aba0348.battery.512.Dc.0.Power'/*N/c0619aba0348/battery/512/Dc/0/Power*/).val)); //Änderunge auf Victron ESS
+	if (veBatPower > 80) {
+		sbChargePower = veBatPower;
+	} else if (veBatPower < -80)
+	{
+		sbDischargePower = veBatPower * -1;
+	}
+	//sbChargePower = parseFloat((getState('javascript.0.sb-ladung'/*SB-Ladung*/).val)); //Änderunge auf Victron ESS
+	//sbDischargePower = parseFloat((getState('javascript.0.sb-entladung'/*SB-Entladung*/).val)); //Änderung auf Victron ESS
+	kostalChargePower = parseFloat((getState('plenticore.0.devices.local.battery.Charge_P'/*Current charging power*/).val));
+	kostalDischargePower = parseFloat((getState('plenticore.0.devices.local.battery.Discharge_P'/*Current discharging power*/).val));
+	controlSmoothVal = getState('javascript.0.sungrow-iobroker-control-smoothcounter'/*Sungrow Iobroker Steuerung Glaettung*/).val;
+	sgBatteryRefreshActive = getState('javascript.0.sungrow-iobroker-control-battery-refresh'/*Sungrow Batterie Auffrischung*/).val;
+
+	//log('SG Battery SoC: ' + batterySoC + ' %');
+	//log('SG Battery DoC: ' + batteryDoC + ' %');
+
+	if (ioBrokerControl == 1) {
+		if (emsMode != 2) { //Sungrow ferngesteuerten Modus aktivieren
+			setState('modbus.0.holdingRegisters.13049_EMS_mode_selection'/*EMS Modus*/,2);
+			setState('modbus.0.holdingRegisters.13083_Start__Charging_Power'/*u U  Leistung, mit welcher ein Ladevorgang begonnen wird  Klärung erwünscht*/,startChargePower);
+			setState('modbus.0.holdingRegisters.13084_Start_Discharging Power'/*u U  Leistung, mit welcher ein Entladevorgang begonnen wird  Klärung erwünscht*/,startDischargePower);
+		}
+		if (((gridExport > exportThreshold) && (batterySoC < batteryFullSoC)) && (controlSmoothVal <= controlSmoothThreshold)) { //Zweig Energieüberschuß/Einspeisung
+			if (((batteryState == sungrowDischargeBat) && (batterySoC > batteryDoC)) && (controlSmoothVal <= controlSmoothThreshold)) { //Sofern Entladung gerade aktiv, Reduzierung der Entladeleistung bis Glättungswert erreicht
+				sgOperationMode = 4;
+			} else { // Ladung aktivieren, wenn aktiv Leistung erhöhen, Zeitfenster controlSmoothThreshold
+				sgOperationMode = 1;
+			};
+		} else if (((gridImport > importThreshold) && (batterySoC > batteryDoC)) && (controlSmoothVal <= controlSmoothThreshold)) { //Zweig Energiemangel/Bezug
+			if (((batteryState == sungrowChargeBat) && (batterySoC < batteryFullSoC)) && (controlSmoothVal <= controlSmoothThreshold)) { //Sofern Ladung gerade aktiv, Reduzierung der Ladeleistung Glättungswert erreicht
+				sgOperationMode = 2;
+			} else { //Entladung aktivieren, wenn aktiv Leistung erhöhen, Zeitfenster controlSmoothThreshold
+				sgOperationMode = 3;
+			}
+		} else if (batterySoC < batteryDoC)  {
+			sgOperationMode = 7;
+		} else if ( (controlSmoothVal >= controlSmoothThreshold) ||
+                ((gridImport > 0) && (batterySoC <= batteryDoC) && (!sgBatteryRefreshActive)) ||
+                ((gridImport > 0) && (batterySoC == batteryDoC) && (sgBatteryRefreshActive)) ||
+                ((gridExport > 0) && ((batterySoC == batteryFullSoC)))
+		) { //Sungrow Standby Batteriemodus aktivieren
+			sgOperationMode = 6;
+		} else if ((batteryState == sungrowDischargeBat) && ((sbChargePower + kostalChargePower) > 0) ) {
+			sgOperationMode = 4;
+		} else if ((batteryState == sungrowChargeBat) && ((sbDischargePower + kostalDischargePower)) >0) {
+			sgOperationMode = 2;
+		};
+
+		switch (sgOperationMode) {
+			case 1: // Ladung aktivieren und Ladeleistung erhöhen
+				setState('javascript.0.sungrow-iobroker-control-smoothcounter'/*Sungrow Iobroker Steuerung Glaettung*/,0);
+				if (batteryState != sungrowChargeBat) {
+					setState('modbus.0.holdingRegisters.13050_Charge/discharge_command'/*Ext  Sollvorgabe Laden170(AA)/ Stop204(BB)/ Entladen187(CC)*/,sungrowChargeBat);
+				};
+				batPowerCorrection = sbDischargePower + kostalDischargePower;
+				setState('modbus.0.holdingRegisters.13051_Charge/discharge_power'/*Ext  Sollvorgabe Lade/Entladeleistung*/,getCalcSgBatteryPowerUp(gridExport,targetBatteryPower,batPowerCorrection));
+				break;
+
+			case 2: // Ladeleistung reduzieren
+				batPowerCorrection = sbDischargePower + kostalDischargePower;
+				setState('modbus.0.holdingRegisters.13051_Charge/discharge_power'/*Ext  Sollvorgabe Lade/Entladeleistung*/, getCalcSgBatteryPowerDown(gridImport,targetBatteryPower,batPowerCorrection));
+				controlSmoothVal++;
+				setState('javascript.0.sungrow-iobroker-control-smoothcounter'/*Sungrow Iobroker Steuerung Glaettung*/,controlSmoothVal);
+				break;
+
+			case 3: // Entladung aktivieren und Entladeleistung erhöhen
+				setState('javascript.0.sungrow-iobroker-control-smoothcounter'/*Sungrow Iobroker Steuerung Glaettung*/,0);
+				if (batteryState != sungrowDischargeBat) {
+					setState('modbus.0.holdingRegisters.13050_Charge/discharge_command'/*Ext  Sollvorgabe Laden170(AA)/ Stop204(BB)/ Entladen187(CC)*/,sungrowDischargeBat);
+				}
+				batPowerCorrection = sbChargePower + kostalChargePower;
+				setState('modbus.0.holdingRegisters.13051_Charge/discharge_power'/*Ext  Sollvorgabe Lade/Entladeleistung*/,getCalcSgBatteryPowerUp(gridImport,targetBatteryPower,batPowerCorrection));
+				break;
+
+			case 4: // Entladeleistung reduzieren
+				batPowerCorrection = sbChargePower + kostalChargePower;
+				setState('modbus.0.holdingRegisters.13051_Charge/discharge_power'/*Ext  Sollvorgabe Lade/Entladeleistung*/, getCalcSgBatteryPowerDown(gridExport,targetBatteryPower,batPowerCorrection));
+				controlSmoothVal++;
+				setState('javascript.0.sungrow-iobroker-control-smoothcounter'/*Sungrow Iobroker Steuerung Glaettung*/,controlSmoothVal);
+				break;
+
+			case 6: // Standby Modus
+				if (batteryState != sungrowStandby) {
+					setState('modbus.0.holdingRegisters.13050_Charge/discharge_command'/*Ext  Sollvorgabe Laden170(AA)/ Stop204(BB)/ Entladen187(CC)*/,sungrowStandby);
+					setState('modbus.0.holdingRegisters.13051_Charge/discharge_power'/*Ext  Sollvorgabe Lade/Entladeleistung*/, 0);
+				}
+				setState('javascript.0.sungrow-iobroker-control-smoothcounter'/*Sungrow Iobroker Steuerung Glaettung*/,0);
+				if (sgBatteryRefreshActive) {
+					setSgBatteryRefreshFalse();
+				}
+				break;
+
+			case 7: // Nachladen aktivieren um Tiefentladung zu vermeiden
+				setSgBatteryRefreshTrue();
+				setState('javascript.0.sungrow-iobroker-control-smoothcounter'/*Sungrow Iobroker Steuerung Glaettung*/,0);
+				if (batteryState != sungrowChargeBat) {
+					setState('modbus.0.holdingRegisters.13050_Charge/discharge_command'/*Ext  Sollvorgabe Laden170(AA)/ Stop204(BB)/ Entladen187(CC)*/,sungrowChargeBat);
+				};
+				setState('modbus.0.holdingRegisters.13051_Charge/discharge_power'/*Ext  Sollvorgabe Lade/Entladeleistung*/,sgBatteryRefreshPower);
+				break;
+
+			default: // Staus unverändert Lade-/Entladeleistung bleibt gleich
+				if (controlSmoothVal != 0){
+					setState('javascript.0.sungrow-iobroker-control-smoothcounter'/*Sungrow Iobroker Steuerung Glaettung*/,0);
+				}
+				break;
+		}
+
+	} else {
+		if (emsMode != 0) { ////Sungrow ferngesteuerten Modus deaktivieren
+			setState('modbus.0.holdingRegisters.13049_EMS_mode_selection'/*EMS Modus*/,0);
+		}
+	};
+
+};
+
+function getCalcSgBatteryPowerUp(externalPower, currentBatteryPower, powerCorrection) {
+	let calcTargetBatteryPower = 0;
+	const maxSungrowBatteryPower = 10000, calcPrecessionPercentage = 0.95 ;
+	if ((externalPower + currentBatteryPower) < maxSungrowBatteryPower) {
+		calcTargetBatteryPower = currentBatteryPower + (externalPower*calcPrecessionPercentage) - powerCorrection;
+		if (calcTargetBatteryPower < 0) {
+			calcTargetBatteryPower = 0;
+		};
+	}
+	else {
+		calcTargetBatteryPower = maxSungrowBatteryPower - powerCorrection;
+	};
+	return calcTargetBatteryPower;
+};
+
+
+function getCalcSgBatteryPowerDown(externalPower, currentBatteryPower, powerCorrection) {
+	let calcTargetBatteryPower = 0;
+	const calcPrecessionPercentage = 0.95 ;
+	calcTargetBatteryPower = currentBatteryPower - (externalPower*calcPrecessionPercentage) - powerCorrection;
+	if (calcTargetBatteryPower < 0) {
+		calcTargetBatteryPower = 0;
+	};
+	return calcTargetBatteryPower;
+};
+
+function setSgBatteryRefreshFalse() {
+	setState('javascript.0.sungrow-iobroker-control-battery-refresh'/*Sungrow Iobroker Steuerung Batterie Nachladen*/,false);
+};
+
+function setSgBatteryRefreshTrue() {
+	setState('javascript.0.sungrow-iobroker-control-battery-refresh'/*Sungrow Iobroker Steuerung Batterie Nachladen*/,true);
+};
+
+schedule('*/5 * * * * *', ausfuehren);  // alle 5 Sekunden

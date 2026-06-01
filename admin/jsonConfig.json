@@ -120,6 +120,9 @@
                             "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
+                            "step": 0.001,
+                            "min": -1,
+                            "max": 1,
                             "default": "1"
                         }
                     ]
@@ -152,6 +155,9 @@
                             "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
+                            "step": 0.001,
+                            "min": -1,
+                            "max": 1,
                             "default": "1"
                         }
                     ]
@@ -183,6 +189,9 @@
                             "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
+                            "step": 0.001,
+                            "min": -1,
+                            "max": 1,
                             "default": "1"
                         }
                     ]
@@ -209,6 +218,9 @@
                             "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
+                            "step": 0.001,
+                            "min": -1,
+                            "max": 1,
                             "default": "1"
                         }
                     ]
@@ -240,6 +252,9 @@
                             "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
+                            "step": 0.001,
+                            "min": -1,
+                            "max": 1,
                             "default": "1"
                         }
                     ]
@@ -266,6 +281,9 @@
                             "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
+                            "step": 0.001,
+                            "min": -1,
+                            "max": 1,
                             "default": "1"
                         }
                     ]
@@ -381,19 +399,29 @@
                 }
             }
         },
-        "_energyStorageControlChannels":{
+        "_energyStorageChannels":{
             "type": "panel",
-            "label": "Energy Storage Control Channels",
+            "label": "Energy Storage Channels",
             "items": {
                 "energyStorageControlChannels":{
                     "type": "table",
-                    "label": "Energy Storage Control Channels",
+                    "label": "Energy Storage Channels",
                     "items": [
                         {
                             "type": "checkbox",
-                            "width": "15px",
-                            "title": {"en": "Enable"},
-                            "attr": "escChannelEnabled",
+                            "width": "10px",
+                            "title": {"en": "Enable Channel"},
+                            "attr": "esChannelEnabled",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": true
+                        },
+                        {
+                            "type": "checkbox",
+                            "width": "10px",
+                            "title": {"en": "Enable EFM Control"},
+                            "attr": "esEfmControlEnabled",
                             "filter": false,
                             "sort": true,
                             "style":{"textAlign": "right"},
@@ -403,7 +431,7 @@
                             "type": "text",
                             "width": "150px",
                             "title": {"en": "Title"},
-                            "attr": "escChannelTitle",
+                            "attr": "esChannelTitle",
                             "filter": false,
                             "sort": true,
                             "default": ""
@@ -412,7 +440,7 @@
                             "type": "text",
                             "width": "250px",
                             "title": {"en": "Description"},
-                            "attr": "escChannelDescription",
+                            "attr": "esChannelDescription",
                             "filter": false,
                             "sort": true,
                             "default": ""
@@ -420,8 +448,47 @@
                         {
                             "type": "number",
                             "width": "50px",
-                            "title": {"en": "Max. Power (kW)"},
-                            "attr": "escChannelMaxPower",
+                            "title": {"en": "Capacity (kWh)"},
+                            "attr": "esCapacity",
+                            "filter": false,
+                            "sort": true,
+                            "step": 0.1,
+                            "min": 0,
+                            "unit": "kWh",
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Max. Charge Power (kW)"},
+                            "attr": "esMaxChargePower",
+                            "filter": false,
+                            "step": 0.1,
+                            "min": 0,
+                            "unit": "kW",
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Min. Charge Power (kW)"},
+                            "attr": "esMinChargePower",
+                            "filter": false,
+                            "step": 0.1,
+                            "min": 0,
+                            "unit": "kW",
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "objectId",
+                            "width": "50px",
+                            "title": {"en": "Charge Power (kW)"},
+                            "attr": "esChargePower",
                             "filter": false,
                             "sort": true,
                             "style":{"textAlign": "right"},
@@ -430,18 +497,109 @@
                         {
                             "type": "number",
                             "width": "50px",
-                            "title": {"en": "Min. Power (kW)"},
-                            "attr": "escChannelMinPower",
+                            "title": {"en": "Charge Power Factor (+/-)"},
+                            "attr": "pwrFactor",
                             "filter": false,
                             "sort": true,
-                            "style":{"textAlign": "right"},
-                            "default": ""
+                            "step": 0.001,
+                            "min": -1,
+                            "max": 1,
+                            "default": "1"
                         },
                         {
                             "type": "number",
                             "width": "20px",
                             "title": {"en": "Step Size (kW)"},
-                            "attr": "escChannelStepSize",
+                            "attr": "esChannelStepSize",
+                            "filter": false,
+                            "step": 0.01,
+                            "min": 0,
+                            "unit": "kW",
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Max. Discharge Power (kW)"},
+                            "attr": "esMaxDischargePower",
+                            "filter": false,
+                            "step": 0.1,
+                            "min": 0,
+                            "unit": "kW",
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Min. Discharge Power (kW)"},
+                            "attr": "esMinDischargePower",
+                            "filter": false,
+                            "step": 0.1,
+                            "min": 0,
+                            "unit": "kW",
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "objectId",
+                            "width": "50px",
+                            "title": {"en": "Discharge Power (kW)"},
+                            "attr": "esDischargePower",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Discharge Power Factor (+/-)"},
+                            "attr": "pwrFactor",
+                            "filter": false,
+                            "sort": true,
+                            "step": 0.001,
+                            "min": -1,
+                            "max": 1,
+                            "default": "1"
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Min. SoC (%)"},
+                            "attr": "esSoCMin",
+                            "filter": false,
+                            "step": 1,
+                            "min": 0,
+                            "max": 100,
+                            "unit": "%",
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Max. SoC (%)"},
+                            "attr": "esSoCMax",
+                            "filter": false,
+                            "step": 1,
+                            "min": 0,
+                            "max": 100,
+                            "unit": "%",
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": ""
+                        },
+                        {
+                            "type": "objectId",
+                            "width": "50px",
+                            "title": {"en": "SoC (%)"},
+                            "attr": "esSoC",
                             "filter": false,
                             "sort": true,
                             "style":{"textAlign": "right"},
@@ -453,6 +611,8 @@
                             "title": {"en": "Shutdown Delay (s)"},
                             "attr": "escChannelShutdownDelay",
                             "filter": false,
+                            "step": 1,
+                            "min": 0,
                             "sort": true,
                             "style":{"textAlign": "right"},
                             "default": "30"

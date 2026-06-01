@@ -1,8 +1,12 @@
 {
     "common": {
         "name": "energy-flow-motion",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "news": {
+			"0.0.4": {
+                "en": "Redesign of Energy Storage Channels",
+                "de": "Umbau der Energiespeicher-Kanäle"
+            },
 			"0.0.3": {
                 "en": "Added activation delay for LoadPowerControlChannels",
                 "de": "Einschaltverzögerung für LoadPowerControlChannels hinzugefügt"
@@ -27,8 +31,8 @@
             "zh-cn": "能量流运动"
         },
         "desc": {
-            "en": "Capture, calculate and sum up power and energy data. Control energy consumption.",
-            "de": "Leistungs- und Energiedaten erfassen, berechnen und zusammenfassen. Kontrollieren Sie den Energieverbrauch.",
+            "en": "Capture, calculate and sum up power and energy data. Control energy consumption and energy storage.",
+            "de": "Leistungs- und Energiedaten erfassen, berechnen und zusammenfassen. Kontrollieren Sie den Energieverbrauch und Energiespeicherung.",
             "ru": "Захват, расчет и суммирование данных о мощности и энергии. Контролируйте потребление энергии.",
             "pt": "Capture, calcule e some dados de potência e energia. Controle o consumo de energia.",
             "nl": "Vermogens- en energiegegevens vastleggen, berekenen en optellen. Controle energieverbruik.",
@@ -119,6 +123,23 @@
 			"pwcChannelMinPower": "",
 			"pwcChannelStepSize": "",
 			"pwcChannelShutdownDelay": "10"
+		},
+		"energyStorageChannels": {
+			"esChannelEnabled": "false",
+			"esChannelTitle": "CH(x)",
+			"esChannelDescription": "",
+			"esMaxChargePower": "",
+			"esMinChargePower": "",
+			"esChargePower": "",
+			"esChannelStepSize": "",
+			"esMaxDischargePower": "",
+			"esMinDischargePower": "",
+			"esDischargePower": "",
+			"esSoCMax": "",
+			"esSoCMin": "",
+			"esSoC": "",
+			"esCapacity": "",
+			"esChannelShutdownDelay": "2"
 		}
     },
     "objects": [],
