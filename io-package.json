@@ -122,15 +122,19 @@
 			"pwcChannelMaxPower": "",
 			"pwcChannelMinPower": "",
 			"pwcChannelStepSize": "",
-			"pwcChannelShutdownDelay": "10"
+			"pwcChannelShutdownDelay": "10",
+			"pwcChannelActivationDelay": "2"
 		},
-		"energyStorageChannels": {
+		"energyStorageControlChannels": {
 			"esChannelEnabled": "false",
+			"esEfmControlEnabled": "true",
 			"esChannelTitle": "CH(x)",
 			"esChannelDescription": "",
 			"esMaxChargePower": "",
 			"esMinChargePower": "",
 			"esChargePower": "",
+			"esDischgPwrFactor": "1",
+			"esChgPwrFactor": "1",
 			"esChannelStepSize": "",
 			"esMaxDischargePower": "",
 			"esMinDischargePower": "",
@@ -139,7 +143,8 @@
 			"esSoCMin": "",
 			"esSoC": "",
 			"esCapacity": "",
-			"esChannelShutdownDelay": "2"
+			"esChannelShutdownDelay": "2",
+			"esChannelActivationDelay": "2"
 		}
     },
     "objects": [],
@@ -1194,6 +1199,42 @@
 			"common": {
 				"role": "value",
 				"name": "Sum of active Load Power",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kW"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energyStorageControl",
+			"type": "channel",
+			"common": {
+				"name": "Energy Storage Control"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energyStorageControl.sumActiveChargePower",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Sum of active Charge Power",
+				"type": "number",
+				"read": true,
+				"write": false,
+				"def": 0,
+				"unit": "kW"
+			},
+			"native": {}
+		},
+		{
+			"_id": "energyStorageControl.sumActiveDischargePower",
+			"type": "state",
+			"common": {
+				"role": "value",
+				"name": "Sum of active Discharge Power",
 				"type": "number",
 				"read": true,
 				"write": false,

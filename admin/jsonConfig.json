@@ -391,6 +391,16 @@
                             "sort": true,
                             "style":{"textAlign": "right"},
                             "default": "30"
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Activation Delay (s)"},
+                            "attr": "pwcChannelActivationDelay",
+                            "filter": false,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": "2"
                         }
                     ],
                     "uniqueColumns": ["pwcChannelTitle"],
@@ -498,7 +508,7 @@
                             "type": "number",
                             "width": "50px",
                             "title": {"en": "Charge Power Factor (+/-)"},
-                            "attr": "pwrFactor",
+                            "attr": "esChgPwrFactor",
                             "filter": false,
                             "sort": true,
                             "step": 0.001,
@@ -559,7 +569,7 @@
                             "type": "number",
                             "width": "50px",
                             "title": {"en": "Discharge Power Factor (+/-)"},
-                            "attr": "pwrFactor",
+                            "attr": "esDischgPwrFactor",
                             "filter": false,
                             "sort": true,
                             "step": 0.001,
@@ -609,13 +619,25 @@
                             "type": "number",
                             "width": "50px",
                             "title": {"en": "Shutdown Delay (s)"},
-                            "attr": "escChannelShutdownDelay",
+                            "attr": "esChannelShutdownDelay",
                             "filter": false,
                             "step": 1,
                             "min": 0,
                             "sort": true,
                             "style":{"textAlign": "right"},
-                            "default": "30"
+                            "default": "2"
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Activation Delay (s)"},
+                            "attr": "esChannelActivationDelay",
+                            "filter": false,
+                            "step": 1,
+                            "min": 0,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": "2"
                         }
                     ]
 

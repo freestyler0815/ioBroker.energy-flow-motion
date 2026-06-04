@@ -39,6 +39,7 @@ class EnergyFlowMotion extends utils.Adapter {
 	 */
 	async onReady() {
 		await this.initPowerControlChannels();
+		await this.initEnergyStorageChannels();
 		this.refreshRate = parseInt(this.config.updateInterval)*1000;
 		await this.updateValues();
 		this.intervalId = this.setInterval( async () => {
@@ -631,7 +632,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerOn', {val: false, ack: true});
 		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerValue', {val: 0, ack: true});
 		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.shutdownDelay', {val: parseFloat(cfgTableEntry.pwcChannelShutdownDelay), ack: true});
-		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.activationDelay', {val: parseFloat(this.config.powerControlActivationDelay), ack: true});
+		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.activationDelay', {val: parseFloat(cfgTableEntry.pwcChannelActivationDelay), ack: true});
 	}
 
 	//this function is the main function to control the loadPowerChannels
@@ -922,20 +923,21 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async initEnergyStorageChannels() {
-		this.log.info('PowerControlInitChannels started');
-		let cfgTable = this.config.powerControlChannels;
+		this.log.info('EnergyStorageInitChannels started');
+		let cfgTable = this.config.energyStorageControlChannels;
 		let counter = 0;
-		await this.setStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad', {val: 0, ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.sumActiveChargePower', {val: 0, ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.sumActiveDischargePower', {val: 0, ack: true});
 		if (this.supportsFeature && this.supportsFeature('ADAPTER_DEL_OBJECT_RECURSIVE')) {
-			await this.delObjectAsync(this.namespace + '.loadPowerControl.channels', { recursive: true });
+			await this.delObjectAsync(this.namespace + '.energyStorageControl.channels', { recursive: true });
 		}
 		if (cfgTable && Array.isArray(cfgTable)) {
-			this.log.info('PowerControlInitChannels started');
+			this.log.info('EnergyStorageInitChannels started');
 			for (let p in cfgTable) {
 				let cfgTableEntry = cfgTable[p];
 				//ToDo: Fehlermeldung für leeren Title einbauen
-				if (cfgTableEntry.pwcChannelTitle) {
-					this.log.info('PowerControlInitChannel: ' + cfgTableEntry.pwcChannelTitle);
+				if (cfgTableEntry.esChannelTitle) {
+					this.log.info('EnergyStorageInitChannel: ' + cfgTableEntry.esChannelTitle);
 					counter +=1;
 					await this.createObjectTreeESC(cfgTableEntry,counter);
 					//let channelPrefix = this.leadingZero(counter,3);
@@ -960,21 +962,21 @@ class EnergyFlowMotion extends utils.Adapter {
 			},
 			native: {},
 		});*/
-		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels', {
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels', {
 			type: 'folder',
 			common: {
-				name: 'Load Power Control Channels'
+				name: 'Energy Storage Control Channels'
 			},
 			native: {},
 		});
-		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle , {
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle , {
 			type: 'folder',
 			common: {
-				name: cfgTableEntry.pwcChannelDescription
+				name: cfgTableEntry.esChannelDescription
 			},
 			native: {},
 		});
-		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.priority' , {
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.priority' , {
 			type: 'state',
 			common: {
 				name: 'Priority',
@@ -985,7 +987,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			},
 			native: {},
 		});
-		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.active' , {
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.active' , {
 			type: 'state',
 			common: {
 				name: 'Active',
@@ -996,10 +998,10 @@ class EnergyFlowMotion extends utils.Adapter {
 			},
 			native: {},
 		});
-		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerOn' , {
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.chargeOn' , {
 			type: 'state',
 			common: {
-				name: 'PowerOn',
+				name: 'ChargeOn',
 				type: 'boolean',
 				role: 'switch.power',
 				read: true,
@@ -1007,10 +1009,10 @@ class EnergyFlowMotion extends utils.Adapter {
 			},
 			native: {},
 		});
-		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerValue' , {
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.chargePowerValue' , {
 			type: 'state',
 			common: {
-				name: 'PowerValue',
+				name: 'ChargePowerValue',
 				type: 'number',
 				role: 'value',
 				unit: 'kW',
@@ -1019,7 +1021,30 @@ class EnergyFlowMotion extends utils.Adapter {
 			},
 			native: {},
 		});
-		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.shutdownDelay' , {
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.dischargeOn' , {
+			type: 'state',
+			common: {
+				name: 'DischargeOn',
+				type: 'boolean',
+				role: 'switch.power',
+				read: true,
+				write: true,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.dischargePowerValue' , {
+			type: 'state',
+			common: {
+				name: 'DischargePowerValue',
+				type: 'number',
+				role: 'value',
+				unit: 'kW',
+				read: true,
+				write: true,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.shutdownDelay' , {
 			type: 'state',
 			common: {
 				name: 'ShutdownDelay',
@@ -1031,7 +1056,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			},
 			native: {},
 		});
-		await this.setObjectNotExistsAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.activationDelay' , {
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.activationDelay' , {
 			type: 'state',
 			common: {
 				name: 'ActivationDelay',
@@ -1042,13 +1067,15 @@ class EnergyFlowMotion extends utils.Adapter {
 			},
 			native: {},
 		});
-		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.priority', {val: priority, ack: true});
-		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.active', {val: cfgTableEntry.pwcChannelEnabled, ack: true});
-		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerOn', {val: false, ack: true});
-		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.powerValue', {val: 0, ack: true});
-		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.shutdownDelay', {val: parseFloat(cfgTableEntry.pwcChannelShutdownDelay), ack: true});
-		await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.activationDelay', {val: parseFloat(this.config.powerControlActivationDelay), ack: true});
-	}	
+		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.priority', {val: priority, ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.active', {val: cfgTableEntry.esChannelEnabled, ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.chargeOn', {val: false, ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.chargePowerValue', {val: 0, ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.dischargeOn', {val: false, ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.dischargePowerValue', {val: 0, ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.shutdownDelay', {val: parseFloat(cfgTableEntry.esChannelShutdownDelay), ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.activationDelay', {val: parseFloat(cfgTableEntry.esChannelActivationDelay), ack: true});
+	}
 
 
 	leadingZero(num, size) {
