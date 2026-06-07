@@ -81,7 +81,7 @@
     },
     "native": {
         "updateInterval": "2",
-        "batteryExists": "false",
+        "energyStorageControleActive": "false",
 		"importThreshold": "50",
 		"exportThreshold": "50",
 		"powerControlActivationDelay": "1",
@@ -103,17 +103,6 @@
 		"exportDataTable": {
 			"pwrObjectId": "",
 			"pwrFactor": "1"
-		},
-		"batChargeDataTable": {
-			"pwrObjectId": "",
-			"pwrFactor": "1"
-		},
-		"batDischargeDataTable": {
-			"pwrObjectId": "",
-			"pwrFactor": "1"
-		},
-		"batSoCDataTable": {
-			"socObjectId": ""
 		},
 		"powerControlChannels": {
 			"pwcChannelEnabled": "false",

@@ -68,14 +68,14 @@
                         "label": "Power Control Activation Delay",
                         "help": "Amount of Update-Intervalls to delay the activation of a Power Channel"
                 },                
-                "batteryExists":{
+                "energyStorageControlActive":{
                     "newLine": true,
                     "type": "checkbox",                    
                     "sm": 2,
                     "md": 1,
                     "lg": 1,
-                    "label": "BatteryExists",
-                    "help": "Check if a battery exists"
+                    "label": "Energy Storage Control Active",
+                    "help": "Activate Energy Storage Control"
                 },
                 "energyCounterMonthActive":{
                     "newLine": true,
@@ -222,91 +222,6 @@
                             "min": -1,
                             "max": 1,
                             "default": "1"
-                        }
-                    ]
-
-                }
-            }
-        },
-        "_batteryPowerData":{
-            "type": "panel",
-            "label": "Battery Power Data",
-            "items": {
-                "batChargeDataTable":{
-                    "type": "table",
-                    "label": "Battery Charge Power Data Source Table",
-                    "items": [
-                        {
-                            "type": "objectId",
-                            "width": "250px",
-                            "title": {"en": "ObjectID"},
-                            "attr": "pwrObjectId",
-                            "filter": false,
-                            "sort": true,
-                            "default": ""
-                        },
-                        {
-                            "type": "number",
-                            "width": "50px",
-                            "title": {"en": "Factor (+/-)"},
-                            "attr": "pwrFactor",
-                            "filter": false,
-                            "sort": true,
-                            "step": 0.001,
-                            "min": -1,
-                            "max": 1,
-                            "default": "1"
-                        }
-                    ]
-
-                },
-                "batDischargeDataTable":{
-                    "newLine": true,
-                    "type": "table",
-                    "label": "Battery Discharge Power Data Source Table",
-                    "items": [
-                        {
-                            "type": "objectId",
-                            "width": "250px",
-                            "title": {"en": "ObjectID"},
-                            "attr": "pwrObjectId",
-                            "filter": false,
-                            "sort": true,
-                            "default": ""
-                        },
-                        {
-                            "type": "number",
-                            "width": "50px",
-                            "title": {"en": "Factor (+/-)"},
-                            "attr": "pwrFactor",
-                            "filter": false,
-                            "sort": true,
-                            "step": 0.001,
-                            "min": -1,
-                            "max": 1,
-                            "default": "1"
-                        }
-                    ]
-
-                }
-            }
-        },
-        "_batterySoCData":{
-            "type": "panel",
-            "label": "Battery SoC Data",
-            "items": {
-                "batSoCDataTable":{
-                    "type": "table",
-                    "label": "Battery State of Charge Data Source Table",
-                    "items": [
-                        {
-                            "type": "objectId",
-                            "width": "250px",
-                            "title": {"en": "ObjectID"},
-                            "attr": "socObjectId",
-                            "filter": false,
-                            "sort": true,
-                            "default": ""
                         }
                     ]
 

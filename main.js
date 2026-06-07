@@ -121,15 +121,16 @@ class EnergyFlowMotion extends utils.Adapter {
 			}
 		}
 
-		if ((batChargePwrValue > 0) && (batDischargePwrValue > 0)) {
-			if (batChargePwrValue >= batDischargePwrValue) {
-				batDischargePwrValue = 0;
-			}
-			else {
-				batChargePwrValue = 0;
-			}
-		}
-
+		/*
+		//if ((batChargePwrValue > 0) && (batDischargePwrValue > 0)) {
+		//	if (batChargePwrValue >= batDischargePwrValue) {
+		//		batDischargePwrValue = 0;
+		//	}
+		//	else {
+		//		batChargePwrValue = 0;
+		//	}
+		//}
+		*/
 		//this.log.info('Namespace: ' + this.namespace);
 		//Write current states and energy history to objects
 		await this.setStateAsync(this.namespace + '.power.pvpower', {val: pvPwrValue, ack: true});
@@ -173,26 +174,26 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async getBatteryChargePowerSumValue(){
-		const pwrValue = await this.getSumValuesFromCfgTables(this.config.batChargeDataTable);
+		const pwrValue = await this.getSumChgPwrFromEsCfgTable(this.config.energyStorageControlChannels);
 		this.log.debug('BatChargePowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getBatteryDischargePowerSumValue(){
-		const pwrValue = await this.getSumValuesFromCfgTables(this.config.batDischargeDataTable);
+		const pwrValue = await this.getSumDischgPwrFromEsCfgTable(this.config.energyStorageControlChannels);
 		this.log.debug('BatDischargePowerSum: ' + pwrValue + ' kW');
 		return pwrValue;
 	}
 
 	async getBatterySoCSumValue(){
-		const cfgTable = this.config.batSoCDataTable;
+		const cfgTable = this.config.energyStorageControlChannels;
 		let socValue = 0;
 		let counter = 0;
 		if (cfgTable && Array.isArray(cfgTable)) {
 			for (let p in cfgTable) {
 				let cfgTableEntry = cfgTable[p];
-				if (cfgTableEntry.socObjectId) {
-					let socObjId = cfgTableEntry.socObjectId;
+				if (cfgTableEntry.esSoC) {
+					let socObjId = cfgTableEntry.esSoC;
 					try {
 						let socState = await this.getForeignStateAsync(socObjId);
 						if (socState.val != null) {
@@ -231,6 +232,86 @@ class EnergyFlowMotion extends utils.Adapter {
 								}
 								pwrValue += parseFloat(powerState.val)*pwrFactor;
 								//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
+							}
+						}
+					} catch (error) {
+						this.log.error(error);
+					}
+				}
+			}
+			//this.log.info('ConfigTable: ' + cfgTable + ' , SumPowerRead:' + pwrValue);
+		}
+		if (pwrValue < 0) {
+			return 0;
+		}
+		else {
+			return pwrValue;
+		}
+	}
+
+	async getSumChgPwrFromEsCfgTable(cfgTable){
+		let pwrValue = 0;
+		if (cfgTable && Array.isArray(cfgTable)) {
+			//this.log.info('Is Array');
+			for (let p in cfgTable) {
+				let cfgTableEntry = cfgTable[p];
+				//this.log.info('Entry Selected');
+				if (cfgTableEntry.esChargePower) {
+					let pwrObjId = cfgTableEntry.esChargePower;
+					let pwrFactor = parseFloat(cfgTableEntry.esChgPwrFactor);
+					//this.log.info('Entry Read');
+					try {
+						let powerState = await this.getForeignStateAsync(pwrObjId);
+						if (powerState.val != null) {
+							if (isNaN(powerState.val)){
+								pwrValue = 0;
+							} else {
+								if ((parseFloat(powerState.val)*pwrFactor) < 0) {
+									this.log.debug('Value for ' + cfgTableEntry.esChargePower + ' is negative (Calculated Value is: ' + parseFloat(powerState.val)*pwrFactor +') setting Value to zero.');
+								} else {
+									pwrValue += parseFloat(powerState.val)*pwrFactor;
+									//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
+								}
+							}
+						}
+					} catch (error) {
+						this.log.error(error);
+					}
+				}
+			}
+			//this.log.info('ConfigTable: ' + cfgTable + ' , SumPowerRead:' + pwrValue);
+		}
+		if (pwrValue < 0) {
+			return 0;
+		}
+		else {
+			return pwrValue;
+		}
+	}
+
+	async getSumDischgPwrFromEsCfgTable(cfgTable){
+		let pwrValue = 0;
+		if (cfgTable && Array.isArray(cfgTable)) {
+			//this.log.info('Is Array');
+			for (let p in cfgTable) {
+				let cfgTableEntry = cfgTable[p];
+				//this.log.info('Entry Selected');
+				if (cfgTableEntry.esDischargePower) {
+					let pwrObjId = cfgTableEntry.esDischargePower;
+					let pwrFactor = parseFloat(cfgTableEntry.esDischgPwrFactor);
+					//this.log.info('Entry Read');
+					try {
+						let powerState = await this.getForeignStateAsync(pwrObjId);
+						if (powerState.val != null) {
+							if (isNaN(powerState.val)){
+								pwrValue = 0;
+							} else {
+								if ((parseFloat(powerState.val)*pwrFactor) < 0) {
+									this.log.debug('Value for ' + cfgTableEntry.esDischargePower + ' is negative (Calculated Value is: ' + parseFloat(powerState.val)*pwrFactor +') setting Value to zero.');
+								} else {
+									pwrValue += parseFloat(powerState.val)*pwrFactor;
+									//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
+								}
 							}
 						}
 					} catch (error) {
