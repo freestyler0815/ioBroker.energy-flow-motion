@@ -305,7 +305,7 @@
                             "filter": false,
                             "sort": true,
                             "style":{"textAlign": "right"},
-                            "default": "30"
+                            "default": "20"
                         },
                         {
                             "type": "number",
@@ -315,7 +315,7 @@
                             "filter": false,
                             "sort": true,
                             "style":{"textAlign": "right"},
-                            "default": "2"
+                            "default": "1"
                         }
                     ],
                     "uniqueColumns": ["pwcChannelTitle"],
@@ -540,7 +540,7 @@
                             "min": 0,
                             "sort": true,
                             "style":{"textAlign": "right"},
-                            "default": "2"
+                            "default": "1"
                         },
                         {
                             "type": "number",
@@ -552,7 +552,7 @@
                             "min": 0,
                             "sort": true,
                             "style":{"textAlign": "right"},
-                            "default": "2"
+                            "default": "1"
                         }
                     ]
 

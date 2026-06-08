@@ -14,6 +14,26 @@ const utils = require('@iobroker/adapter-core');
 // Load your modules here, e.g.:
 // const fs = require("fs");
 
+class EnergyStats {
+	constructor(date,load,pv,gridExport,gridImport,selfConsumption,batteryDischarge,batteryCharge,selfConsumptionQuota,autarchyQuota) {
+		this.date = date;
+		this.load = load;
+		this.pv = pv;
+		this.gridExport = gridExport;
+		this.gridImport = gridImport;
+		this.selfConsumption = selfConsumption;
+		this.batteryDischarge = batteryDischarge;
+		this.batteryCharge = batteryCharge;
+		this.selfConsumptionQuota = selfConsumptionQuota;
+		this.autarchyQuota = autarchyQuota;
+		this.valueIDs = ['date','load','pv','export','import','selfConsumption','batteryDischarge','batteryCharge','selfConsumptionQuota','autarchyQuota'];
+	}
+	getDate() { return this.date; }
+	getValueIDs() { return this.valueIDs; }
+}
+
+
+
 class EnergyFlowMotion extends utils.Adapter {
 
 	intervalId;
@@ -196,8 +216,8 @@ class EnergyFlowMotion extends utils.Adapter {
 					let socObjId = cfgTableEntry.esSoC;
 					try {
 						let socState = await this.getForeignStateAsync(socObjId);
-						if (socState.val != null) {
-							socValue += parseFloat(socState.val);
+						if (socState && socState.val != null) {
+							socValue += parseFloat(socState.val.toString());
 							counter += 1;
 						}
 					} catch (error) {
@@ -223,14 +243,15 @@ class EnergyFlowMotion extends utils.Adapter {
 					//this.log.info('Entry Read');
 					try {
 						let powerState = await this.getForeignStateAsync(pwrObjId);
-						if (powerState.val != null) {
-							if (isNaN(powerState.val)){
+						if (powerState && powerState.val != null) {
+							if (!Number.isFinite(powerState.val)){
+							//if (isNaN(parseFloat((powerState.val.toString())))){
 								pwrValue = 0;
 							} else {
-								if ((parseFloat(powerState.val)*pwrFactor) < 0) {
-									this.log.debug('Value for ' + cfgTableEntry.pwrObjectId + ' is negative (Calculated Value is: ' + parseFloat(powerState.val)*pwrFactor +') setting Value to zero.');
+								if ((parseFloat(powerState.val.toString())*pwrFactor) < 0) {
+									this.log.debug('Value for ' + cfgTableEntry.pwrObjectId + ' is negative (Calculated Value is: ' + parseFloat(powerState.val.toString())*pwrFactor +') setting Value to zero.');
 								}
-								pwrValue += parseFloat(powerState.val)*pwrFactor;
+								pwrValue += parseFloat(powerState.val.toString())*pwrFactor;
 								//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
 							}
 						}
@@ -262,14 +283,14 @@ class EnergyFlowMotion extends utils.Adapter {
 					//this.log.info('Entry Read');
 					try {
 						let powerState = await this.getForeignStateAsync(pwrObjId);
-						if (powerState.val != null) {
-							if (isNaN(powerState.val)){
+						if (powerState && powerState.val != null) {
+							if (!Number.isFinite(powerState.val)){
 								pwrValue = 0;
 							} else {
-								if ((parseFloat(powerState.val)*pwrFactor) < 0) {
-									this.log.debug('Value for ' + cfgTableEntry.esChargePower + ' is negative (Calculated Value is: ' + parseFloat(powerState.val)*pwrFactor +') setting Value to zero.');
+								if ((parseFloat(powerState.val.toString())*pwrFactor) < 0) {
+									this.log.debug('Value for ' + cfgTableEntry.esChargePower + ' is negative (Calculated Value is: ' + parseFloat(powerState.val.toString())*pwrFactor +') setting Value to zero.');
 								} else {
-									pwrValue += parseFloat(powerState.val)*pwrFactor;
+									pwrValue += parseFloat(powerState.val.toString())*pwrFactor;
 									//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
 								}
 							}
@@ -302,14 +323,14 @@ class EnergyFlowMotion extends utils.Adapter {
 					//this.log.info('Entry Read');
 					try {
 						let powerState = await this.getForeignStateAsync(pwrObjId);
-						if (powerState.val != null) {
-							if (isNaN(powerState.val)){
+						if (powerState && powerState.val != null) {
+							if (!Number.isFinite(powerState.val)){
 								pwrValue = 0;
 							} else {
-								if ((parseFloat(powerState.val)*pwrFactor) < 0) {
-									this.log.debug('Value for ' + cfgTableEntry.esDischargePower + ' is negative (Calculated Value is: ' + parseFloat(powerState.val)*pwrFactor +') setting Value to zero.');
+								if ((parseFloat(powerState.val.toString())*pwrFactor) < 0) {
+									this.log.debug('Value for ' + cfgTableEntry.esDischargePower + ' is negative (Calculated Value is: ' + parseFloat(powerState.val.toString())*pwrFactor +') setting Value to zero.');
 								} else {
-									pwrValue += parseFloat(powerState.val)*pwrFactor;
+									pwrValue += parseFloat(powerState.val.toString())*pwrFactor;
 									//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
 								}
 							}
@@ -382,8 +403,8 @@ class EnergyFlowMotion extends utils.Adapter {
 				this.log.debug('Path for Value:' + sEfmCurrPath + sEfmValueIDs[y]);
 				try {
 					let stateObject = await this.getStateAsync(sEfmCurrPath + sEfmValueIDs[y]);
-					if (stateObject.val != null) {
-						if (sEfmValueIDs[y] == 'date') {
+					if (stateObject && stateObject.val != null) {
+						if (sEfmValueIDs[y] == 'date' && typeof stateObject.val === 'string') {
 							vEfmValues[x][y] = new Date (stateObject.val);
 						} else {
 							vEfmValues[x][y] = stateObject.val;
@@ -405,6 +426,72 @@ class EnergyFlowMotion extends utils.Adapter {
 			}
 		}
 		return vEfmValues;
+	}
+	async readValuesAsObjects(timePeriod) {
+		let energyStats = new EnergyStats();
+		let sPathEnergyValues = await this.getEnergyPathLive();
+		let sEfmCurrPath = '';
+		sEfmCurrPath = sPathEnergyValues + '.' + timePeriod + '.';
+		//'date','load','pv','export','import','selfConsumption','batteryDischarge','batteryCharge','selfConsumptionQuota','autarchyQuota'
+		try {
+			let stateObjectDate = await this.getStateAsync(sEfmCurrPath + 'date');
+			let stateObjectLoad = await this.getStateAsync(sEfmCurrPath + 'load');
+			let stateObjectPv = await this.getStateAsync(sEfmCurrPath + 'pv');
+			let stateObjectExport = await this.getStateAsync(sEfmCurrPath + 'export');
+			let stateObjectImport = await this.getStateAsync(sEfmCurrPath + 'import');
+			let stateObjectSelfConsumption = await this.getStateAsync(sEfmCurrPath + 'selfConsumption');
+			let stateObjectBatteryDischarge = await this.getStateAsync(sEfmCurrPath + 'batteryDischarge');
+			let stateObjectBatteryCharge = await this.getStateAsync(sEfmCurrPath + 'batteryCharge');
+			let stateObjectSelfConsumptionQuota = await this.getStateAsync(sEfmCurrPath + 'selfConsumptionQuota');
+			let stateObjectAutarchyQuota = await this.getStateAsync(sEfmCurrPath + 'autarchyQuota');
+			if (stateObjectDate && stateObjectDate.val != null) {
+				if (typeof stateObjectDate.val === 'string') {
+					energyStats.date = new Date (stateObjectDate.val);
+				} else {
+					energyStats.date = stateObjectDate.val;
+				}
+				//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
+			}
+			if (stateObjectLoad && stateObjectLoad.val != null) {
+
+				energyStats.load = stateObjectLoad.val;
+			}
+			if (stateObjectPv && stateObjectPv.val != null) {
+
+				energyStats.pv = stateObjectPv.val;
+			}
+			if (stateObjectExport && stateObjectExport.val != null) {
+
+				energyStats.gridExport = stateObjectExport.val;
+			}
+			if (stateObjectImport && stateObjectImport.val != null) {
+
+				energyStats.gridImport = stateObjectImport.val;
+			}
+			if (stateObjectSelfConsumption && stateObjectSelfConsumption.val != null) {
+
+				energyStats.selfConsumption = stateObjectSelfConsumption.val;
+			}
+			if (stateObjectBatteryDischarge && stateObjectBatteryDischarge.val != null) {
+
+				energyStats.batteryDischarge = stateObjectBatteryDischarge.val;
+			}
+			if (stateObjectBatteryCharge && stateObjectBatteryCharge.val != null) {
+
+				energyStats.batteryCharge = stateObjectBatteryCharge.val;
+			}
+			if (stateObjectSelfConsumptionQuota && stateObjectSelfConsumptionQuota.val != null) {
+
+				energyStats.selfConsumptionQuota = stateObjectSelfConsumptionQuota.val;
+			}
+			if (stateObjectAutarchyQuota && stateObjectAutarchyQuota.val != null) {
+
+				energyStats.autarchyQuota = stateObjectAutarchyQuota.val;
+			}
+		} catch (error) {
+			this.log.error(error);
+		}
+		return energyStats;
 	}
 
 	async historyManage(pEfmValues) {
@@ -790,11 +877,12 @@ class EnergyFlowMotion extends utils.Adapter {
 							let minPower = cfgTableEntry.pwcChannelMinPower;
 							let powerStepSize = cfgTableEntry.pwcChannelStepSize;
 							//let shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
+							let activationDelay = cfgTableEntry.pwcChannelActivationDelay;
 							let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
 							if (activePowerConsumptionValue > 0) {
 								if ((maxPower == minPower) && (powerStepSize == 0)) {
 									if (dynamicLoadDecreaseActive == false) {
-										if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle)) {
+										if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle,activationDelay)) {
 											powerBudget += activePowerConsumptionValue;
 										} else {
 											sumPowerConsumption += activePowerConsumptionValue;
@@ -809,7 +897,7 @@ class EnergyFlowMotion extends utils.Adapter {
 										powerBudget += newPowerConsumption;
 										sumPowerConsumption += newPowerConsumption;
 									} else {
-										if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle)) {
+										if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle,activationDelay)) {
 											powerBudget += activePowerConsumptionValue;
 										} else {
 											sumPowerConsumption += activePowerConsumptionValue;
@@ -835,7 +923,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		//let updateInterval = parseInt(this.config.updateInterval);
 		if (activationDelayValue <= 0) {
 			this.log.debug('activate pwc');
-			let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
+			let shutdownDelayValue = await this.getPwcConfigShutDownDelay(pwcChannelTitle);
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue', {val: powerValue, ack: true});
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerOn', {val: true, ack: true});
 			if (shutdownDelay > shutdownDelayValue) {
@@ -885,10 +973,11 @@ class EnergyFlowMotion extends utils.Adapter {
 		return newPowerConsumption;
 	}
 
-	async deactivatePwcChannel(pwcChannelTitle) {
+	async deactivatePwcChannel(pwcChannelTitle,activationDelay) {
 		let shutdownDelayValue = await this.getPwcShutDownDelay(pwcChannelTitle);
+		//let activationDelay = parseInt(this.config.powerControlActivationDelay);
+		//let activationDelay = await this.getPwcConfigActivationDelay(pwcChannelTitle);
 		let updateInterval = parseInt(this.config.updateInterval);
-		let activationDelay = parseInt(this.config.powerControlActivationDelay);
 		if (shutdownDelayValue - updateInterval > 0) {
 			shutdownDelayValue -= updateInterval;
 			await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay', {val: shutdownDelayValue, ack: true});
@@ -905,8 +994,8 @@ class EnergyFlowMotion extends utils.Adapter {
 	async getPwcActivePowerConsumptionValue(pwcChannelTitle) {
 		try {
 			const activePowerConsumption = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.powerValue');
-			if (activePowerConsumption.val != null) {
-				return parseFloat(activePowerConsumption.val);
+			if (activePowerConsumption && activePowerConsumption.val != null) {
+				return parseFloat(activePowerConsumption.val.toString());
 			} else {
 				return 0;
 			}
@@ -919,8 +1008,8 @@ class EnergyFlowMotion extends utils.Adapter {
 	async getPwcShutDownDelay(pwcChannelTitle) {
 		try {
 			const shutdownDelay = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.shutdownDelay');
-			if (shutdownDelay.val != null) {
-				return parseFloat(shutdownDelay.val);
+			if (shutdownDelay && shutdownDelay.val != null) {
+				return parseFloat(shutdownDelay.val.toString());
 			} else {
 				return 0;
 			}
@@ -928,13 +1017,27 @@ class EnergyFlowMotion extends utils.Adapter {
 			this.log.error(error);
 			return 0;
 		}
+	}
+
+	async getPwcConfigShutDownDelay(pwcChannelTitle) {
+		let cfgTable = this.config.powerControlChannels;
+		let cfgShutdownDelay = -1;
+		if (cfgTable && Array.isArray(cfgTable)) {
+			for (let p in cfgTable) {
+				let cfgTableEntry = cfgTable[p];
+				if (cfgTableEntry.pwcChannelTitle == pwcChannelTitle) {
+					cfgShutdownDelay = parseInt(cfgTableEntry.pwcChannelShutdownDelay);
+				}
+			}
+		}
+		return cfgShutdownDelay;
 	}
 
 	async getPwcActivationDelay(pwcChannelTitle) {
 		try {
 			const activationDelay = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.channels.' + pwcChannelTitle + '.activationDelay');
-			if (activationDelay.val != null) {
-				return parseFloat(activationDelay.val);
+			if (activationDelay && activationDelay.val != null) {
+				return parseFloat(activationDelay.val.toString());
 			} else {
 				return 0;
 			}
@@ -944,11 +1047,25 @@ class EnergyFlowMotion extends utils.Adapter {
 		}
 	}
 
+	async getPwcConfigActivationDelay(pwcChannelTitle) {
+		let cfgTable = this.config.powerControlChannels;
+		let cfgActivationDelay = -1;
+		if (cfgTable && Array.isArray(cfgTable)) {
+			for (let p in cfgTable) {
+				let cfgTableEntry = cfgTable[p];
+				if (cfgTableEntry.pwcChannelTitle == pwcChannelTitle) {
+					cfgActivationDelay = parseInt(cfgTableEntry.pwcChannelActivationDelay);
+				}
+			}
+		}
+		return cfgActivationDelay;
+	}
+
 	async getPwcSumActiveLoad() {
 		try {
 			const sumActiveLoad = await this.getForeignStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad');
-			if (sumActiveLoad.val != null) {
-				return parseFloat(sumActiveLoad.val);
+			if (sumActiveLoad && sumActiveLoad.val != null) {
+				return parseFloat(sumActiveLoad.val.toString());
 			} else {
 				return 0;
 			}
@@ -996,7 +1113,7 @@ class EnergyFlowMotion extends utils.Adapter {
 			for (let p in cfgTable) {
 				let cfgTableEntry = cfgTable[p];
 				if (cfgTableEntry.pwcChannelEnabled) {
-					await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.activationDelay', {val: parseFloat(this.config.powerControlActivationDelay), ack: true});
+					await this.setStateAsync(this.namespace + '.loadPowerControl.channels.' + cfgTableEntry.pwcChannelTitle + '.activationDelay', {val: parseFloat(cfgTableEntry.pwcChannelActivationDelay), ack: true});
 				}
 			}
 

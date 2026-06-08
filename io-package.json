@@ -112,7 +112,7 @@
 			"pwcChannelMinPower": "",
 			"pwcChannelStepSize": "",
 			"pwcChannelShutdownDelay": "10",
-			"pwcChannelActivationDelay": "2"
+			"pwcChannelActivationDelay": "1"
 		},
 		"energyStorageControlChannels": {
 			"esChannelEnabled": "false",
@@ -132,8 +132,8 @@
 			"esSoCMin": "",
 			"esSoC": "",
 			"esCapacity": "",
-			"esChannelShutdownDelay": "2",
-			"esChannelActivationDelay": "2"
+			"esChannelShutdownDelay": "1",
+			"esChannelActivationDelay": "1"
 		}
     },
     "objects": [],
