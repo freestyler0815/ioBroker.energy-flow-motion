@@ -15,7 +15,7 @@ const utils = require('@iobroker/adapter-core');
 // const fs = require("fs");
 
 class EnergyStats {
-	constructor(date,load,pv,gridExport,gridImport,selfConsumption,batteryDischarge,batteryCharge,selfConsumptionQuota,autarchyQuota) {
+	constructor(date,load,pv,gridExport,gridImport,selfConsumption,batteryDischarge,batteryCharge,selfConsumptionQuota,autarchyQuota,timePeriod) {
 		this.date = date;
 		this.load = load;
 		this.pv = pv;
@@ -26,10 +26,53 @@ class EnergyStats {
 		this.batteryCharge = batteryCharge;
 		this.selfConsumptionQuota = selfConsumptionQuota;
 		this.autarchyQuota = autarchyQuota;
+		this.timePeriod = timePeriod;
 		this.valueIDs = ['date','load','pv','export','import','selfConsumption','batteryDischarge','batteryCharge','selfConsumptionQuota','autarchyQuota'];
 	}
 	getDate() { return this.date; }
 	getValueIDs() { return this.valueIDs; }
+	resetValues(newDate) {	this.load = 0; this.pv = 0; this.gridExport = 0; this.gridImport = 0; this.selfConsumption = 0; this.batteryDischarge = 0; this.batteryCharge = 0; this.selfConsumptionQuota = 0; this.autarchyQuota = 0; this.date = newDate; }
+	calcValues(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge, pUpdateRate) {
+		// Implementation for calculating energy values
+		if ((pUpdateRate == 0) || (pUpdateRate == null)) {
+			pUpdateRate = 2;
+		}
+		let vEnergyDivisor = 3600 / pUpdateRate;
+		// Werte berechnen
+		this.load = this.load + (pFloatLoad / vEnergyDivisor);
+		this.pv = this.pv + (pFloatPvPower / vEnergyDivisor);
+		this.gridExport = this.gridExport + (pFloatExport / vEnergyDivisor);
+		this.gridImport = this.gridImport + (pFloatImport / vEnergyDivisor);
+		this.selfConsumption = this.selfConsumption + ((pFloatPvPower - pFloatExport) / vEnergyDivisor);
+		if (this.selfConsumption < 0) {
+			this.selfConsumption = 0;
+		}
+		this.batteryDischarge = this.batteryDischarge + (pFloatBatDischarge / vEnergyDivisor);
+		this.batteryCharge = this.batteryCharge + (pFloatBatCharge / vEnergyDivisor);
+		if (this.pv == 0) {
+			this.selfConsumptionQuota = 0;
+		} else {
+			this.selfConsumptionQuota = this.selfConsumption / this.pv * 100;
+			if (this.selfConsumptionQuota > 100) {
+				this.selfConsumptionQuota = 100;
+			}
+			if (this.selfConsumptionQuota < 0) {
+				this.selfConsumptionQuota = 0;
+			}
+		}
+		if (this.load == 0){
+			this.autarchyQuota = 100;
+		} else {
+			this.autarchyQuota = (100 - (this.gridImport / this.load * 100));
+			if (this.autarchyQuota > 100) {
+				this.autarchyQuota = 100;
+			}
+			if (this.autarchyQuota < 0) {
+				this.autarchyQuota = 0;
+			}
+		}
+		return this;
+	}
 }
 
 
@@ -377,16 +420,27 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async efmCalcEnergyHistory (pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge)  {
-		// aktuelle Energiezählerstände einlesen
-		let vEfmValues = await this.readValues();
-		// Zählerstandhistorie managen (Tageswechsel etc. historische Zählerstände neu schreiben)
-		vEfmValues = await this.historyManage(vEfmValues);
+		let energyStats = [new EnergyStats()];
+		let pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
+		let updateRate = parseInt(this.config.updateInterval);
+		for (let i = 0; i < pEfmPathTimePeriod.length; i++) {
+			// aktuelle Energiezählerstände einlesen
+			energyStats[i] = await this.readValuesAsObjects(pEfmPathTimePeriod[i]);
+			// Zählerstandhistorie managen (Tageswechsel etc. historische Zählerstände neu schreiben)
+			energyStats[i] = await this.historyManageV2(energyStats[i]);
+			// aktuelle Zählerstände berechnen
+			energyStats[i] = await energyStats[i].calcValues(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge,updateRate);
+			// Zählerstände in States schreiben
+			await this.writeValuesV2(energyStats[i]);
+		}
+		//let vEfmValues = await this.readValues();
+		//vEfmValues = await this.historyManage(vEfmValues);
 		// aktuelle Zählerstände berechnen
-		const vEfmCalcValues = await this.calcValues(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge,vEfmValues);
+		//const vEfmCalcValues = await this.calcValues(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge,vEfmValues);
 		// Zählerstände in States schreiben
-		await this.writeValues(vEfmCalcValues);
+		//await this.writeValues(vEfmCalcValues);
 	}
-
+	/*
 	async readValues() {
 		let pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
 		let sPathEnergyValues = await this.getEnergyPathLive();
@@ -427,10 +481,12 @@ class EnergyFlowMotion extends utils.Adapter {
 		}
 		return vEfmValues;
 	}
+	*/
 	async readValuesAsObjects(timePeriod) {
 		let energyStats = new EnergyStats();
 		let sPathEnergyValues = await this.getEnergyPathLive();
 		let sEfmCurrPath = '';
+		energyStats.timePeriod = timePeriod;
 		sEfmCurrPath = sPathEnergyValues + '.' + timePeriod + '.';
 		//'date','load','pv','export','import','selfConsumption','batteryDischarge','batteryCharge','selfConsumptionQuota','autarchyQuota'
 		try {
@@ -444,13 +500,13 @@ class EnergyFlowMotion extends utils.Adapter {
 			let stateObjectBatteryCharge = await this.getStateAsync(sEfmCurrPath + 'batteryCharge');
 			let stateObjectSelfConsumptionQuota = await this.getStateAsync(sEfmCurrPath + 'selfConsumptionQuota');
 			let stateObjectAutarchyQuota = await this.getStateAsync(sEfmCurrPath + 'autarchyQuota');
+			// Check if Data was loaded from Objects and write to EnergyStats Object
 			if (stateObjectDate && stateObjectDate.val != null) {
 				if (typeof stateObjectDate.val === 'string') {
 					energyStats.date = new Date (stateObjectDate.val);
 				} else {
 					energyStats.date = stateObjectDate.val;
 				}
-				//this.log.info('Object: ' + pwrObjId + ' , PowerFactor:' + pwrFactor + ', PowerRead:' + pwrValue);
 			}
 			if (stateObjectLoad && stateObjectLoad.val != null) {
 
@@ -493,7 +549,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		}
 		return energyStats;
 	}
-
+	/*
 	async historyManage(pEfmValues) {
 		let pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
 		let iPathArrayLen = pEfmPathTimePeriod.length;
@@ -528,14 +584,12 @@ class EnergyFlowMotion extends utils.Adapter {
 			vCalcDate[2].setFullYear(vCalcDate[2].getFullYear() + 1);
 		}
 
-		/*
 		log('Value of now: ' + now.toString(),'info');
 		log('Value of vCalcDate: ' + vCalcDate.toString(),'info');
 		log('Value of nowMonth: ' + nowMonth.toString(),'info');
 		log('Value of vCalcMonth: ' + vCalcMonth.toString(),'info');
 		log('Value of nowYear: ' + nowYear.toString(),'info');
 		log('Value of vCalcYear: ' + vCalcYear.toString(),'info');
-		*/
 
 		// Reset Counters and write History
 		for (let xc = 0; xc < iPathArrayLen; xc++) {
@@ -574,7 +628,54 @@ class EnergyFlowMotion extends utils.Adapter {
 		}
 		return pEfmValues;
 	}
-
+*/
+	async historyManageV2(energyStats) {
+		let sEnergyPathHistory = await this.getEnergyPathHistory();
+		let sEfmCurrPath = '';
+		let vCalcDate = new Date();
+		let now = new Date();
+		let newDate = new Date();
+		newDate.setHours(0,0,30,0);
+		switch (energyStats.timePeriod) {
+			case 'day':
+				vCalcDate.setDate(energyStats.date.getDate() + 1);
+				break;
+			case 'month':
+				if (this.config.energyCounterMonthActive) {
+					now.setDate(1);
+					vCalcDate.setDate(1);
+					vCalcDate.setMonth(energyStats.date.getMonth() + 1);
+				}
+				break;
+			case 'year':
+				if (this.config.energyCounterYearActive) {
+					now.setDate(1);
+					now.setMonth(0);
+					vCalcDate.setDate(1);
+					vCalcDate.setMonth(0);
+					vCalcDate.setFullYear(energyStats.date.getFullYear() + 1);
+				}
+				break;
+		}
+		//'date','load','pv','export','import','selfConsumption','batteryDischarge','batteryCharge','selfConsumptionQuota','autarchyQuota'
+		if (now.valueOf() >= vCalcDate.valueOf()) {
+			sEfmCurrPath = sEnergyPathHistory + '.' + energyStats.timePeriod + '.';
+			await this.setStateAsync(sEfmCurrPath + 'date',energyStats.date.valueOf(),true);
+			await this.setStateAsync(sEfmCurrPath + 'load',energyStats.load,true);
+			await this.setStateAsync(sEfmCurrPath + 'pv',energyStats.pv,true);
+			await this.setStateAsync(sEfmCurrPath + 'export',energyStats.gridExport,true);
+			await this.setStateAsync(sEfmCurrPath + 'import',energyStats.gridImport,true);
+			await this.setStateAsync(sEfmCurrPath + 'selfConsumption',energyStats.selfConsumption,true);
+			await this.setStateAsync(sEfmCurrPath + 'batteryDischarge',energyStats.batteryDischarge,true);
+			await this.setStateAsync(sEfmCurrPath + 'batteryCharge',energyStats.batteryCharge,true);
+			await this.setStateAsync(sEfmCurrPath + 'selfConsumptionQuota',energyStats.selfConsumptionQuota,true);
+			await this.setStateAsync(sEfmCurrPath + 'autarchyQuota',energyStats.autarchyQuota,true);
+			energyStats.resetValues(newDate);
+			this.log.debug('Reset ' + energyStats.timePeriod + ' Counter executed');
+		}
+		return energyStats;
+	}
+	/*
 	async calcValues(p1FloatPvPower, p1FloatLoad, p1FloatExport, p1FloatImport, p1FloatBatCharge, p1FloatBatDischarge, pEfmValues) {
 		let pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
 		let iPathArrayLen = pEfmPathTimePeriod.length;
@@ -651,7 +752,8 @@ class EnergyFlowMotion extends utils.Adapter {
 		//this.log.debug("calcvalues executed");
 		return vEfmCalcValues;
 	}
-
+	*/
+	/*
 	async writeValues(pEfmCalcValues) {
 		let pEfmPathTimePeriod = await this.getEnergyCounterTimePeriod();
 		let iPathArrayLen = pEfmPathTimePeriod.length;
@@ -670,6 +772,29 @@ class EnergyFlowMotion extends utils.Adapter {
 					this.log.error(error + ' ValueID: ' + sEfmValueIDs[ye] + ' Value: ' + pEfmCalcValues[xe][ye]);
 				}
 			}
+		}
+		this.log.debug('writevalues executed');
+	}
+*/
+	async writeValuesV2(energyStats) {
+		let sEnergyPathLive = await this.getEnergyPathLive();
+		let sEfmCurrPath = '';
+		// Werte schreiben
+		try {
+			sEfmCurrPath = sEnergyPathLive + '.' + energyStats.timePeriod + '.';
+			await this.setStateAsync(sEfmCurrPath + 'date',energyStats.date.valueOf(),true);
+			await this.setStateAsync(sEfmCurrPath + 'load',energyStats.load,true);
+			await this.setStateAsync(sEfmCurrPath + 'pv',energyStats.pv,true);
+			await this.setStateAsync(sEfmCurrPath + 'export',energyStats.gridExport,true);
+			await this.setStateAsync(sEfmCurrPath + 'import',energyStats.gridImport,true);
+			await this.setStateAsync(sEfmCurrPath + 'selfConsumption',energyStats.selfConsumption,true);
+			await this.setStateAsync(sEfmCurrPath + 'batteryDischarge',energyStats.batteryDischarge,true);
+			await this.setStateAsync(sEfmCurrPath + 'batteryCharge',energyStats.batteryCharge,true);
+			await this.setStateAsync(sEfmCurrPath + 'selfConsumptionQuota',energyStats.selfConsumptionQuota,true);
+			await this.setStateAsync(sEfmCurrPath + 'autarchyQuota',energyStats.autarchyQuota,true);
+		}
+		catch(error) {
+			this.log.error(error + ' EnergyStatsTimeperiod: ' + energyStats.timePeriod);
 		}
 		this.log.debug('writevalues executed');
 	}
