@@ -632,19 +632,19 @@ class EnergyFlowMotion extends utils.Adapter {
 	async historyManageV2(energyStats) {
 		let sEnergyPathHistory = await this.getEnergyPathHistory();
 		let sEfmCurrPath = '';
-		let vCalcDate = new Date();
+		let vCalcDate = new Date (energyStats.date.valueOf());
 		let now = new Date();
 		let newDate = new Date();
 		newDate.setHours(0,0,30,0);
 		switch (energyStats.timePeriod) {
 			case 'day':
-				vCalcDate.setDate(energyStats.date.getDate() + 1);
+				vCalcDate.setDate(vCalcDate.getDate() + 1);
 				break;
 			case 'month':
 				if (this.config.energyCounterMonthActive) {
 					now.setDate(1);
 					vCalcDate.setDate(1);
-					vCalcDate.setMonth(energyStats.date.getMonth() + 1);
+					vCalcDate.setMonth(vCalcDate.getMonth() + 1);
 				}
 				break;
 			case 'year':
@@ -653,7 +653,7 @@ class EnergyFlowMotion extends utils.Adapter {
 					now.setMonth(0);
 					vCalcDate.setDate(1);
 					vCalcDate.setMonth(0);
-					vCalcDate.setFullYear(energyStats.date.getFullYear() + 1);
+					vCalcDate.setFullYear(vCalcDate.getFullYear() + 1);
 				}
 				break;
 		}
