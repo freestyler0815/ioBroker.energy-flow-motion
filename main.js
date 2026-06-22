@@ -206,10 +206,10 @@ class EnergyFlowMotion extends utils.Adapter {
 		await this.efmCalcEnergyHistory(pvPwrValue,loadPwrValue,exportPwrValue,importPwrValue,batChargePwrValue,batDischargePwrValue);
 
 		//Control Energy Storage
-		//await this.energyStorageControl(pvPwrValue,loadPwrValue,exportPwrValue,importPwrValue,batChargePwrValue,batDischargePwrValue);
+		await this.energyStorageControl(exportPwrValue, importPwrValue, batDischargePwrValue);
 
 		//Control dynamic Load
-		await this.loadPowerControl(pvPwrValue,loadPwrValue,exportPwrValue,importPwrValue,batChargePwrValue,batDischargePwrValue);
+		await this.loadPowerControl(exportPwrValue, importPwrValue, batDischargePwrValue);
 	}
 
 	async getPvPowerSumValue(){
@@ -929,11 +929,11 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	//this function is the main function to control the loadPowerChannels
-	async loadPowerControl(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge) {
+	async loadPowerControl(pFloatExport, pFloatImport, pFloatBatDischarge) {
 		//loadPowerControl active?
 		//this.log.info('loadPowerControl');
 		if (this.config.powerControlActive) {
-			let powerBudget = await this.calcPowerBudget(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge);
+			let powerBudget = await this.calcPowerBudget(pFloatExport, pFloatImport, pFloatBatDischarge);
 			//this.log.info('Powerbudget: '+powerBudget);
 			let cfgTable = this.config.powerControlChannels;
 			let sumPowerConsumption = 0;
@@ -1200,7 +1200,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		}
 	}
 
-	async calcPowerBudget(pFloatPvPower, pFloatLoad, pFloatExport, pFloatImport, pFloatBatCharge, pFloatBatDischarge) {
+	async calcPowerBudget(pFloatExport, pFloatImport, pFloatBatDischarge) {
 		const exportThreshold = parseFloat(this.config.exportThreshold)/1000;
 		const importThreshold = parseFloat(this.config.importThreshold)/1000;
 		if ((pFloatBatDischarge > 0) && (pFloatImport > importThreshold)) {
@@ -1398,6 +1398,119 @@ class EnergyFlowMotion extends utils.Adapter {
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.dischargePowerValue', {val: 0, ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.shutdownDelay', {val: parseFloat(cfgTableEntry.esChannelShutdownDelay), ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.activationDelay', {val: parseFloat(cfgTableEntry.esChannelActivationDelay), ack: true});
+	}
+
+	async energyStorageControl(pFloatExport,pFloatImport,pFloatBatDischarge) {
+		if (this.config.powerControlActive) {
+			let powerBudget = await this.calcPowerBudget(pFloatExport, pFloatImport, pFloatBatDischarge);
+			//this.log.info('Powerbudget: '+powerBudget);
+			//let cfgTable = this.config.powerControlChannels;
+			let cfgTable = this.config.energyStorageControlChannels;
+			let sumPowerConsumption = 0;
+			let dynamicLoadDecreaseActive = false;
+			//Check if Powercontrolchannels exists in the setup
+			if (cfgTable && Array.isArray(cfgTable)) {
+				//powerBudget > 0, activate loadPowerChannels to consume the energy
+				if (powerBudget > 0) {
+					for (let p in cfgTable) {
+						let cfgTableEntry = cfgTable[p];
+						if (cfgTableEntry.pwcChannelEnabled) {
+							let maxPower = cfgTableEntry.pwcChannelMaxPower;
+							let minPower = cfgTableEntry.pwcChannelMinPower;
+							let powerStepSize = cfgTableEntry.pwcChannelStepSize;
+							let shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
+							let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
+							//current channel active power consumption = 0
+							if (activePowerConsumptionValue == 0) {
+								// static channel
+								if ((maxPower == minPower) && (powerStepSize == 0)) {
+									if (minPower <= powerBudget) {
+										//activate powerChannel
+										if (await this.activatePwcChannel(cfgTableEntry.pwcChannelTitle,minPower,shutdownDelay)) {
+											powerBudget -= minPower;
+											sumPowerConsumption += minPower;
+										}
+									}
+								// dynamic channel
+								} else if ((maxPower > minPower) && (powerStepSize > 0)) {
+									if (minPower <= powerBudget) {
+										let powerTarget = minPower;
+										while (powerTarget + powerStepSize <= powerBudget) {
+											powerTarget += powerStepSize;
+										}
+										if (await this.activatePwcChannel(cfgTableEntry.pwcChannelTitle,powerTarget,shutdownDelay)) {
+											powerBudget -= powerTarget;
+											sumPowerConsumption += powerTarget;
+										}
+									}
+								}
+							// powerChannel already active, check if it is a dynamic channel
+							} else if ((maxPower > minPower) && (powerStepSize > 0)) {
+								if (powerStepSize <= powerBudget) {
+									// increase powerconsumption of dynamic channel
+									let newPowerConsumption = await this.increasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,maxPower,shutdownDelay,powerBudget);
+									powerBudget -= newPowerConsumption;
+									sumPowerConsumption += newPowerConsumption;
+								} else {
+									sumPowerConsumption += activePowerConsumptionValue;
+								}
+							} else {
+								sumPowerConsumption += activePowerConsumptionValue;
+							}
+						}
+					}
+					// set current sum of powerconsumption of all channels
+					await this.setStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad', {val: sumPowerConsumption, ack: true});
+				}
+				// decrease or deactivate the powerconsumption of dynamic or static powerChannels
+				else if (powerBudget < 0) {
+					let tabelCounter = cfgTable.length;
+					for (let i = tabelCounter - 1; i >= 0; i--) {
+						let cfgTableEntry = cfgTable[i];
+						if (cfgTableEntry.pwcChannelEnabled) {
+							let maxPower = cfgTableEntry.pwcChannelMaxPower;
+							let minPower = cfgTableEntry.pwcChannelMinPower;
+							let powerStepSize = cfgTableEntry.pwcChannelStepSize;
+							//let shutdownDelay = cfgTableEntry.pwcChannelShutdownDelay;
+							let activationDelay = cfgTableEntry.pwcChannelActivationDelay;
+							let activePowerConsumptionValue = await this.getPwcActivePowerConsumptionValue(cfgTableEntry.pwcChannelTitle);
+							if (activePowerConsumptionValue > 0) {
+								if ((maxPower == minPower) && (powerStepSize == 0)) {
+									if (dynamicLoadDecreaseActive == false) {
+										if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle,activationDelay)) {
+											powerBudget += activePowerConsumptionValue;
+										} else {
+											sumPowerConsumption += activePowerConsumptionValue;
+										}
+									} else {
+										sumPowerConsumption += activePowerConsumptionValue;
+									}
+								} else if ((maxPower > minPower) && (powerStepSize > 0)) {
+									dynamicLoadDecreaseActive = true;
+									if (activePowerConsumptionValue > minPower) {
+										let newPowerConsumption = await this.decreasePowerPwcChannel(cfgTableEntry.pwcChannelTitle,powerStepSize,minPower,powerBudget);
+										powerBudget += newPowerConsumption;
+										sumPowerConsumption += newPowerConsumption;
+									} else {
+										if (await this.deactivatePwcChannel(cfgTableEntry.pwcChannelTitle,activationDelay)) {
+											powerBudget += activePowerConsumptionValue;
+										} else {
+											sumPowerConsumption += activePowerConsumptionValue;
+										}
+									}
+								}
+
+							}
+
+						}
+					}
+					await this.setStateAsync(this.namespace + '.loadPowerControl.sumActiveLoad', {val: sumPowerConsumption, ack: true});
+				} else {
+					await this.resetShutdownDelays(cfgTable);
+					await this.resetActivationDelays(cfgTable);
+				}
+			}
+		}
 	}
 
 
