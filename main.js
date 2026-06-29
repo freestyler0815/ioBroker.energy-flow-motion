@@ -75,6 +75,50 @@ class EnergyStats {
 	}
 }
 
+class PowerValues {
+	constructor(pvPwrValue, loadPwrValue, exportPwrValue, importPwrValue, batChargePwrValue, batDischargePwrValue, batSoCValue, efmAdapter) {
+		this.pvPwrValue = pvPwrValue;
+		this.loadPwrValue = loadPwrValue;
+		this.exportPwrValue = exportPwrValue;
+		this.importPwrValue = importPwrValue;
+		this.batChargePwrValue = batChargePwrValue;
+		this.batDischargePwrValue = batDischargePwrValue;
+		this.batSoCValue = batSoCValue;
+		this.efmAdapter = efmAdapter;
+		this.valueIDs = ['pvPwrValue','loadPwrValue','exportPwrValue','importPwrValue','batChargePwrValue','batDischargePwrValue','batSoCValue'];
+	}
+	getValueIDs() { return this.valueIDs; }
+	resetValues() { this.pvPwrValue = 0; this.loadPwrValue = 0; this.exportPwrValue = 0; this.importPwrValue = 0; this.batChargePwrValue = 0; this.batDischargePwrValue = 0; this.batSoCValue = 0; }	
+	setValues(pvPwrValue, loadPwrValue, exportPwrValue, importPwrValue, batChargePwrValue, batDischargePwrValue, batSoCValue) {
+		if ((exportPwrValue > 0) && (importPwrValue >0)) {
+			if (exportPwrValue >= importPwrValue) {
+				importPwrValue = 0;
+			}
+			else {
+				exportPwrValue = 0;
+			}
+		}
+		this.pvPwrValue = pvPwrValue;
+		this.loadPwrValue = loadPwrValue;
+		this.exportPwrValue = exportPwrValue;
+		this.importPwrValue = importPwrValue;
+		this.batChargePwrValue = batChargePwrValue;
+		this.batDischargePwrValue = batDischargePwrValue;
+		this.batSoCValue = batSoCValue;
+	}
+	async writeValues(){
+		await this.efmAdapter.setStateAsync(this.efmAdapter.namespace + '.power.pvpower', {val: this.pvPwrValue, ack: true});
+		await this.efmAdapter.setStateAsync(this.efmAdapter.namespace + '.power.load', {val: this.loadPwrValue, ack: true});
+		await this.efmAdapter.setStateAsync(this.efmAdapter.namespace + '.power.export', {val: this.exportPwrValue, ack: true});
+		await this.efmAdapter.setStateAsync(this.efmAdapter.namespace + '.power.import', {val: this.importPwrValue, ack: true});
+		await this.efmAdapter.setStateAsync(this.efmAdapter.namespace + '.power.batteryCharge', {val: this.batChargePwrValue, ack: true});
+		await this.efmAdapter.setStateAsync(this.efmAdapter.namespace + '.power.batteryDischarge', {val: this.batDischargePwrValue, ack: true});
+		await this.efmAdapter.setStateAsync(this.efmAdapter.namespace + '.power.batterySoC', {val: this.batSoCValue, ack: true});
+		this.efmAdapter.log.debug('PowerValuesObject written to States');
+	}
+}
+
+
 
 
 class EnergyFlowMotion extends utils.Adapter {
@@ -95,8 +139,8 @@ class EnergyFlowMotion extends utils.Adapter {
 		// this.on('objectChange', this.onObjectChange.bind(this));
 		// this.on('message', this.onMessage.bind(this));
 		this.on('unload', this.onUnload.bind(this));
+		this.powerValues = new PowerValues(0,0,0,0,0,0,0,this);
 	}
-
 	/**
 	 * Is called when databases are connected and adapter received configuration.
 	 */
@@ -167,6 +211,7 @@ class EnergyFlowMotion extends utils.Adapter {
 	async updateValues() {
 		//this.log.info('RefreshRate:' + this.refreshRate);
 		let pvPwrValue = 0, loadPwrValue = 0, exportPwrValue = 0, importPwrValue = 0, batChargePwrValue = 0, batDischargePwrValue = 0, batSoCValue = 0;
+		this.powerValues.resetValues();
 		pvPwrValue = await this.getPvPowerSumValue();
 		loadPwrValue = await this.getLoadPowerSumValue();
 		exportPwrValue = await this.getGridExportPowerSumValue();
@@ -174,16 +219,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		batChargePwrValue = await this.getBatteryChargePowerSumValue();
 		batDischargePwrValue = await this.getBatteryDischargePowerSumValue();
 		batSoCValue = await this.getBatterySoCSumValue();
-
-		if ((exportPwrValue > 0) && (importPwrValue >0)) {
-			if (exportPwrValue >= importPwrValue) {
-				importPwrValue = 0;
-			}
-			else {
-				exportPwrValue = 0;
-			}
-		}
-
+		this.powerValues.setValues(pvPwrValue, loadPwrValue, exportPwrValue, importPwrValue, batChargePwrValue, batDischargePwrValue, batSoCValue);		
 		/*
 		//if ((batChargePwrValue > 0) && (batDischargePwrValue > 0)) {
 		//	if (batChargePwrValue >= batDischargePwrValue) {
@@ -196,6 +232,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		*/
 		//this.log.info('Namespace: ' + this.namespace);
 		//Write current states and energy history to objects
+		/*
 		await this.setStateAsync(this.namespace + '.power.pvpower', {val: pvPwrValue, ack: true});
 		await this.setStateAsync(this.namespace + '.power.load', {val: loadPwrValue, ack: true});
 		await this.setStateAsync(this.namespace + '.power.export', {val: exportPwrValue, ack: true});
@@ -204,12 +241,15 @@ class EnergyFlowMotion extends utils.Adapter {
 		await this.setStateAsync(this.namespace + '.power.batteryDischarge', {val: batDischargePwrValue, ack: true});
 		await this.setStateAsync(this.namespace + '.power.batterySoC', {val: batSoCValue, ack: true});
 		await this.efmCalcEnergyHistory(pvPwrValue,loadPwrValue,exportPwrValue,importPwrValue,batChargePwrValue,batDischargePwrValue);
-
+		*/
+		await this.powerValues.writeValues();
 		//Control Energy Storage
-		await this.energyStorageControl(exportPwrValue, importPwrValue, batDischargePwrValue);
+		//await this.energyStorageControl(exportPwrValue, importPwrValue, batDischargePwrValue);
+		//await this.energyStorageControl(this.powerValues);
 
 		//Control dynamic Load
-		await this.loadPowerControl(exportPwrValue, importPwrValue, batDischargePwrValue);
+		//await this.loadPowerControl(exportPwrValue, importPwrValue, batDischargePwrValue);
+		await this.loadPowerControl(this.powerValues);
 	}
 
 	async getPvPowerSumValue(){
@@ -929,10 +969,14 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	//this function is the main function to control the loadPowerChannels
-	async loadPowerControl(pFloatExport, pFloatImport, pFloatBatDischarge) {
+	//async loadPowerControl(pFloatExport, pFloatImport, pFloatBatDischarge) {
+	async loadPowerControl(pPowerValues) {
 		//loadPowerControl active?
 		//this.log.info('loadPowerControl');
 		if (this.config.powerControlActive) {
+			let pFloatExport = pPowerValues.exportPwrValue;
+			let pFloatImport = pPowerValues.importPwrValue;
+			let pFloatBatDischarge = pPowerValues.batteryDischargePwrValue;
 			let powerBudget = await this.calcPowerBudget(pFloatExport, pFloatImport, pFloatBatDischarge);
 			//this.log.info('Powerbudget: '+powerBudget);
 			let cfgTable = this.config.powerControlChannels;
@@ -1410,11 +1454,11 @@ class EnergyFlowMotion extends utils.Adapter {
 			let dynamicLoadDecreaseActive = false;
 			//Check if Powercontrolchannels exists in the setup
 			if (cfgTable && Array.isArray(cfgTable)) {
-				//powerBudget > 0, activate loadPowerChannels to consume the energy
+				//powerBudget > 0, activate charging in EnergyStorageChannels to store the energy
 				if (powerBudget > 0) {
 					for (let p in cfgTable) {
 						let cfgTableEntry = cfgTable[p];
-						if (cfgTableEntry.pwcChannelEnabled) {
+						if (cfgTableEntry.esChannelEnabled) {
 							let maxPower = cfgTableEntry.pwcChannelMaxPower;
 							let minPower = cfgTableEntry.pwcChannelMinPower;
 							let powerStepSize = cfgTableEntry.pwcChannelStepSize;
