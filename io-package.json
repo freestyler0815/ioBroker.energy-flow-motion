@@ -88,6 +88,8 @@
 		"powerControlActive": "false",
 		"energyStorageRampRate": "0.5",
 		"energyStorageMinWeight": "0.01",
+		"simulationActive": "false",
+		"simulationRampRate": "0.2",
 		"energyCounterMonthActive": "false",
 		"energyCounterYearActive": "false",
 		"pvPowerDataTable": {

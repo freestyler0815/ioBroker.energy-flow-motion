@@ -583,6 +583,34 @@
 
                 }
             }
+        },
+        "_simulation":{
+            "type": "panel",
+            "label": "Simulation",
+            "items": {
+                "simulationActive":{
+                        "type": "checkbox",
+                        "sm": 2,
+                        "md": 1,
+                        "lg": 1,
+                        "default": false,
+                        "label": "Simulation Active",
+                        "help": "Creates input states under 'simulation' for PV/Load power and simulates Grid Export/Import and the configured storage channels from them. Point the existing data source tables (PV/Load/Export/Import, esSoC/esChargePower/esDischargePower) at these simulated objects to use it."
+                },
+                "simulationRampRate":{
+                        "type": "number",
+                        "min": 0,
+                        "max": 20,
+                        "step": 0.01,
+                        "sm": 2,
+                        "md": 2,
+                        "lg": 2,
+                        "default": 0.2,
+                        "unit": "kW/s",
+                        "label": "Simulated Storage Ramp Rate (kW/s)",
+                        "help": "Models the physical inertia of the simulated storages when following commanded charge/discharge power, independent of the controller's own ramp rate"
+                }
+            }
         }
     }
 

@@ -13,6 +13,7 @@ const utils = require('@iobroker/adapter-core');
 
 // Load your modules here, e.g.:
 // const fs = require("fs");
+const EnergyFlowSimulator = require('./lib/simulation.js');
 
 class EnergyStats {
 	constructor(date,load,pv,gridExport,gridImport,selfConsumption,batteryDischarge,batteryCharge,selfConsumptionQuota,autarchyQuota,timePeriod) {
@@ -288,33 +289,40 @@ function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, e
 	}
 
 	const n = speicherListe.length;
-	const zielLeistung = new Array(n).fill(0);
+	// Default: aktuelle Leistung halten. ueberschuss ist die Rest-Einspeisung/-Bezug
+	// NACH der aktuellen Speicherleistung (Feedback vom Netzzähler) - bei ueberschuss=0
+	// absorbieren die Speicher also bereits genau den vorhandenen Überschuss/Bedarf.
+	const zielLeistung = speicherListe.map(s => s.aktuelleLeistung || 0);
 
 	if (ueberschuss > 0) {
-		// Laden: nur Speicher, die noch nicht voll sind. Das Budget wird um die
-		// aktuelle Entladeleistung der Fremdspeicher gekürzt, damit die EFM-Speicher
-		// nicht deren Energie zum Laden abgreifen.
-		const ladeBudget = Math.max(ueberschuss - fremdEntladeleistung, 0);
+		// Laden: nur Speicher, die noch nicht voll sind. Da ueberschuss der Rest NACH
+		// der aktuellen Ladeleistung ist, ergibt sich das tatsächliche Gesamt-Ladeziel
+		// aus aktueller Gesamt-Ladeleistung + ueberschuss (nicht ueberschuss allein -
+		// sonst jagt der Regler einem durch das eigene Laden schrumpfenden Rest hinterher
+		// und konvergiert bei ca. der Hälfte des verfügbaren Überschusses).
+		const aktuelleGesamtLadeleistung = speicherListe.reduce((sum, s) => sum + Math.max(s.aktuelleLeistung || 0, 0), 0);
+		const ladeZielGesamt = Math.max((ueberschuss - fremdEntladeleistung) + aktuelleGesamtLadeleistung, 0);
 		const kapazitaeten = speicherListe.map(s => (s.soc < s.maxSoc ? s.maxLadeleistung : 0));
 		const mindestleistungen = speicherListe.map(s => s.minLadeleistung);
 		const gewichte = speicherListe.map(s => ladeGewicht(s, minGewicht));
 
-		const verteilt = wasserfallVerteilungMitMindestleistung(ladeBudget, kapazitaeten, mindestleistungen, gewichte);
+		const verteilt = wasserfallVerteilungMitMindestleistung(ladeZielGesamt, kapazitaeten, mindestleistungen, gewichte);
 		for (let i = 0; i < n; i++) zielLeistung[i] = verteilt[i];
 
 	} else if (ueberschuss < 0) {
-		// Entladen: nur Speicher, die noch nicht leer sind. Das Budget wird um die
-		// aktuelle Ladeleistung der Fremdspeicher gekürzt, damit die EFM-Speicher
-		// diese nicht mit eigener Energie laden.
-		const entladeBudget = Math.max(Math.abs(ueberschuss) - fremdLadeleistung, 0);
+		// Entladen: analog zum Laden - Gesamt-Entladeziel = aktuelle Gesamt-Entladeleistung
+		// + verbleibender Bedarf (ueberschuss ist bereits der Rest NACH der aktuellen
+		// Entladeleistung).
+		const aktuelleGesamtEntladeleistung = speicherListe.reduce((sum, s) => sum + Math.max(-(s.aktuelleLeistung || 0), 0), 0);
+		const entladeZielGesamt = Math.max((Math.abs(ueberschuss) - fremdLadeleistung) + aktuelleGesamtEntladeleistung, 0);
 		const kapazitaeten = speicherListe.map(s => (s.soc > s.minSoc ? s.maxEntladeleistung : 0));
 		const mindestleistungen = speicherListe.map(s => s.minEntladeleistung);
 		const gewichte = speicherListe.map(s => entladeGewicht(s, minGewicht));
 
-		const verteilt = wasserfallVerteilungMitMindestleistung(entladeBudget, kapazitaeten, mindestleistungen, gewichte);
+		const verteilt = wasserfallVerteilungMitMindestleistung(entladeZielGesamt, kapazitaeten, mindestleistungen, gewichte);
 		for (let i = 0; i < n; i++) zielLeistung[i] = -verteilt[i];
 	}
-	// bei ueberschuss === 0 bleibt zielLeistung überall 0
+	// bei ueberschuss === 0 bleibt zielLeistung auf dem zuletzt gehaltenen Wert (s.o.)
 
 	// --- Rampenbegrenzung: aktuelle Leistung nur schrittweise annähern ---
 	const maxSchritt = rampeKwProS * dtSekunden;
@@ -328,8 +336,12 @@ function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, e
 		neueLeistung[i] = ist + begrenztesDelta;
 	}
 
+	// ueberschuss ist nur der Rest NACH der bisherigen Speicherleistung; für den
+	// tatsächlich verbleibenden Netzsaldo muss die bisherige (Vor-Zyklus-)Leistung
+	// wieder hinzugerechnet werden, bevor die neue Speicherleistung abgezogen wird.
+	const rohUeberschuss = ueberschuss + speicherListe.reduce((sum, s) => sum + (s.aktuelleLeistung || 0), 0);
 	const gesamtSpeicherLeistungIst = neueLeistung.reduce((a, b) => a + b, 0);
-	const restLeistung = ueberschuss - gesamtSpeicherLeistungIst;
+	const restLeistung = rohUeberschuss - gesamtSpeicherLeistungIst;
 
 	return {
 		einspeisung: restLeistung > 0 ? restLeistung : 0,
@@ -360,6 +372,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		// this.on('message', this.onMessage.bind(this));
 		this.on('unload', this.onUnload.bind(this));
 		this.powerValues = new PowerValues(0,0,0,0,0,0,0,this);
+		this.simulator = new EnergyFlowSimulator(this);
 	}
 	/**
 	 * Is called when databases are connected and adapter received configuration.
@@ -367,6 +380,7 @@ class EnergyFlowMotion extends utils.Adapter {
 	async onReady() {
 		await this.initPowerControlChannels();
 		await this.initEnergyStorageChannels();
+		await this.simulator.init();
 		this.refreshRate = parseInt(this.config.updateInterval)*1000;
 		await this.updateValues();
 		this.intervalId = this.setInterval( async () => {
@@ -430,6 +444,7 @@ class EnergyFlowMotion extends utils.Adapter {
 
 	async updateValues() {
 		//this.log.info('RefreshRate:' + this.refreshRate);
+		await this.simulator.run();
 		let pvPwrValue = 0, loadPwrValue = 0, exportPwrValue = 0, importPwrValue = 0, batChargePwrValue = 0, batDischargePwrValue = 0, batSoCValue = 0;
 		this.powerValues.resetValues();
 		pvPwrValue = await this.getPvPowerSumValue();
@@ -1620,8 +1635,8 @@ class EnergyFlowMotion extends utils.Adapter {
 				this.log.warn('energyStorageControlWaterfall: Kein SoC-Wert für Kanal ' + cfgTableEntry.esChannelTitle + ', Kanal wird übersprungen.');
 				continue;
 			}
-			const chargePowerValue = await this.getEsChannelStateValue(cfgTableEntry.esChannelTitle, 'chargePowerValue');
-			const dischargePowerValue = await this.getEsChannelStateValue(cfgTableEntry.esChannelTitle, 'dischargePowerValue');
+			const chargePowerValue = await this.getEsChannelMeasuredPower(cfgTableEntry.esChargePower, cfgTableEntry.esChgPwrFactor);
+			const dischargePowerValue = await this.getEsChannelMeasuredPower(cfgTableEntry.esDischargePower, cfgTableEntry.esDischgPwrFactor);
 			speicherListe.push({
 				id: cfgTableEntry.esChannelTitle,
 				soc: soc,
@@ -1697,11 +1712,21 @@ class EnergyFlowMotion extends utils.Adapter {
 		return null;
 	}
 
-	async getEsChannelStateValue(channelTitle, stateName) {
+	/**
+	 * Liest die tatsächlich gemessene Lade-/Entladeleistung eines Speicherkanals
+	 * (Objekt aus esChargePower/esDischargePower), statt sich auf den zuletzt von
+	 * der Adapter-Logik gesetzten Sollwert zu verlassen, da reale Speicher
+	 * Steuerbefehle träge und nicht sofort vollständig umsetzen.
+	 */
+	async getEsChannelMeasuredPower(pwrObjId, pwrFactor) {
+		if (!pwrObjId) {
+			return 0;
+		}
 		try {
-			const state = await this.getForeignStateAsync(this.namespace + '.energyStorageControl.channels.' + channelTitle + '.' + stateName);
-			if (state && state.val != null) {
-				return parseFloat(state.val.toString());
+			const powerState = await this.getForeignStateAsync(pwrObjId);
+			if (powerState && powerState.val != null && Number.isFinite(powerState.val)) {
+				const value = parseFloat(powerState.val.toString()) * parseNumOr(pwrFactor, 1);
+				return value > 0 ? value : 0;
 			}
 		} catch (error) {
 			this.log.error(error);
