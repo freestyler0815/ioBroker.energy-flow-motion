@@ -26,8 +26,8 @@
                         "lg": 2,
                         "default": 50,
                         "label": "Import Power Threshold (W)",
-                        "help": "Threshold in Watt to detect importing Power from Grid (0W to 500W possible)"
-                },                
+                        "help": "Threshold in Watt to detect importing Power from Grid (0W to 500W possible). Also used as the deadband for the energy storage waterfall control."
+                },
                 "exportThreshold":{
                         "type": "number",
                         "min": 0,
@@ -37,8 +37,8 @@
                         "lg": 2,
                         "default": 50,
                         "label": "Export Power Threshold (W)",
-                        "help": "Threshold in Watt to detect exporting Power to Grid (0W to 500W possible)"
-                },                
+                        "help": "Threshold in Watt to detect exporting Power to Grid (0W to 500W possible). Also used as the deadband for the energy storage waterfall control."
+                },
                 "PVkWp":{
                         "type": "number",
                         "sm": 2,
@@ -70,12 +70,37 @@
                 },                
                 "energyStorageControlActive":{
                     "newLine": true,
-                    "type": "checkbox",                    
+                    "type": "checkbox",
                     "sm": 2,
                     "md": 1,
                     "lg": 1,
                     "label": "Energy Storage Control Active",
                     "help": "Activate Energy Storage Control"
+                },
+                "energyStorageRampRate":{
+                        "type": "number",
+                        "min": 0,
+                        "max": 20,
+                        "step": 0.01,
+                        "sm": 2,
+                        "md": 2,
+                        "lg": 2,
+                        "default": 0.5,
+                        "unit": "kW/s",
+                        "label": "Energy Storage Ramp Rate (kW/s)",
+                        "help": "Maximum power change per storage channel and second"
+                },
+                "energyStorageMinWeight":{
+                        "type": "number",
+                        "min": 0,
+                        "max": 1,
+                        "step": 0.001,
+                        "sm": 2,
+                        "md": 2,
+                        "lg": 2,
+                        "default": 0.01,
+                        "label": "Energy Storage Min. Weight",
+                        "help": "Prevents a channel's distribution weight from becoming zero when SoC is exactly at its limit"
                 },
                 "energyCounterMonthActive":{
                     "newLine": true,

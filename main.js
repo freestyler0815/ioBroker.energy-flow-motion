@@ -138,8 +138,208 @@ class PowerValues {
 	}
 }
 
+function parseNumOr(value, fallback) {
+	const parsed = parseFloat(value);
+	return Number.isFinite(parsed) ? parsed : fallback;
+}
 
+/**
+ * Ein Speicherkanal gilt als von der Speichersteuerung (EFM) kontrolliert,
+ * wenn er aktiviert ist und die EFM-Steuerung für ihn eingeschaltet ist.
+ */
+function isEsChannelEfmControlled(cfgTableEntry) {
+	return !!(cfgTableEntry.esChannelEnabled && cfgTableEntry.esEfmControlEnabled);
+}
 
+/**
+ * Gewichtete Wasserfall-Verteilung: verteilt `gesamt` (kW, >=0) proportional
+ * zu den Gewichten auf die Speicher. Speicher, die ihr Limit (Kapazität)
+ * erreichen, geben den Rest proportional zu den Gewichten der übrigen ab.
+ *
+ * @param {number} gesamt          Zu verteilende Leistung (>= 0)
+ * @param {number[]} kapazitaeten  max. verfügbare Leistung je Speicher (>= 0)
+ * @param {number[]} gewichte      relative Anteile je Speicher (>= 0)
+ * @returns {number[]} zugewiesene Leistung je Speicher (gleiche Reihenfolge)
+ */
+function wasserfallVerteilungGewichtet(gesamt, kapazitaeten, gewichte) {
+	const n = kapazitaeten.length;
+	const ergebnis = new Array(n).fill(0);
+	let rest = gesamt;
+
+	let aktive = kapazitaeten
+		.map((k, i) => ({ i, k, g: gewichte[i] }))
+		.filter(x => x.k > 1e-9 && x.g > 0);
+
+	while (rest > 1e-6 && aktive.length > 0) {
+		const gewichtSumme = aktive.reduce((sum, x) => sum + x.g, 0);
+		let restNeu = rest;
+		const nochAktive = [];
+
+		for (const { i, k, g } of aktive) {
+			const anteil = rest * (g / gewichtSumme);
+			const frei = k - ergebnis[i];
+
+			if (anteil >= frei) {
+				ergebnis[i] += frei;      // Speicher i ist jetzt am Limit
+				restNeu -= frei;
+			} else {
+				ergebnis[i] += anteil;
+				restNeu -= anteil;
+				nochAktive.push({ i, k, g });
+			}
+		}
+		rest = restNeu;
+		aktive = nochAktive;
+	}
+	return ergebnis;
+}
+
+/**
+ * Wie wasserfallVerteilungGewichtet, schließt aber Speicher aus, deren
+ * fairer Anteil zwar >0, aber unterhalb ihrer Mindestleistung liegt.
+ * Der dadurch frei werdende Anteil wird auf die übrigen Speicher verteilt.
+ *
+ * @param {number} gesamt
+ * @param {number[]} kapazitaeten
+ * @param {number[]} mindestleistungen  Mindestleistung je Speicher (>= 0)
+ * @param {number[]} gewichte
+ * @returns {number[]}
+ */
+function wasserfallVerteilungMitMindestleistung(gesamt, kapazitaeten, mindestleistungen, gewichte) {
+	const n = kapazitaeten.length;
+	const ausgeschlossen = new Array(n).fill(false);
+	let ergebnis = new Array(n).fill(0);
+
+	for (;;) {
+		const aktiveKapazitaeten = kapazitaeten.map((k, i) => (ausgeschlossen[i] ? 0 : k));
+		const teilergebnis = wasserfallVerteilungGewichtet(gesamt, aktiveKapazitaeten, gewichte);
+
+		let neuAusgeschlossen = false;
+		for (let i = 0; i < n; i++) {
+			if (!ausgeschlossen[i] && teilergebnis[i] > 1e-9 && teilergebnis[i] < mindestleistungen[i]) {
+				ausgeschlossen[i] = true;
+				neuAusgeschlossen = true;
+			}
+		}
+
+		if (!neuAusgeschlossen) {
+			ergebnis = teilergebnis;
+			break;
+		}
+	}
+	return ergebnis;
+}
+
+/**
+ * Gewicht eines Speichers fürs Entladen: höherer SoC (relativ zum nutzbaren
+ * Bereich) -> höheres Gewicht -> mehr Anteil.
+ */
+function entladeGewicht(s, minGewicht) {
+	const spanne = Math.max(s.maxSoc - s.minSoc, 1e-6);
+	const relativ = (s.soc - s.minSoc) / spanne;
+	return Math.max(relativ, minGewicht);
+}
+
+/**
+ * Gewicht eines Speichers fürs Laden: niedrigerer SoC (mehr freier Platz)
+ * -> höheres Gewicht -> mehr Anteil.
+ */
+function ladeGewicht(s, minGewicht) {
+	const spanne = Math.max(s.maxSoc - s.minSoc, 1e-6);
+	const relativ = (s.maxSoc - s.soc) / spanne;
+	return Math.max(relativ, minGewicht);
+}
+
+/**
+ * Ein Regelzyklus der Wasserfall-Speichersteuerung.
+ *
+ * Als Eingang dient der Netz-Messpunkt (gridExport/gridImport) statt der
+ * Differenz aus PV-Erzeugung und Last, da dieser zuverlässiger ist.
+ *
+ * @param {number} gridExport   Netzeinspeisung (kW, >= 0) = Überschuss
+ * @param {number} gridImport   Netzbezug (kW, >= 0) = Bedarf/Defizit
+ * @param {Array} speicherListe  je Speicher:
+ *   {
+ *     id, soc, minSoc, maxSoc,
+ *     maxLadeleistung, minLadeleistung, maxEntladeleistung, minEntladeleistung,
+ *     aktuelleLeistung   // Zustand aus letztem Zyklus! + = Laden, - = Entladen
+ *   }
+ * @param {number} dtSekunden          Zeit seit letztem Zyklus in Sekunden
+ * @param {number} exportThresholdKW   Totband auf der Einspeiseseite (gleicher Schwellwert wie sonst im Adapter für "exportThreshold")
+ * @param {number} importThresholdKW   Totband auf der Bezugsseite (gleicher Schwellwert wie sonst im Adapter für "importThreshold")
+ * @param {number} rampeKwProS         max. Leistungsänderung je Speicher und Sekunde
+ * @param {number} minGewicht          verhindert Gewicht = 0 bei SoC genau auf der Grenze
+ * @param {number} fremdLadeleistung   aktuelle Ladeleistung der nicht EFM-kontrollierten Speicher (kW, >= 0);
+ *                                     reduziert das Entladebudget der EFM-Speicher, damit diese nicht
+ *                                     Energie zum Laden der Fremdspeicher liefern
+ * @param {number} fremdEntladeleistung aktuelle Entladeleistung der nicht EFM-kontrollierten Speicher (kW, >= 0);
+ *                                     reduziert das Ladebudget der EFM-Speicher, damit diese sich nicht
+ *                                     aus den Fremdspeichern laden
+ * @returns {Object} { einspeisung, bezug, speicher: [{id, leistung}] }
+ *          leistung: + = Laden, - = Entladen (kW)
+ */
+function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, exportThresholdKW, importThresholdKW, rampeKwProS, minGewicht, fremdLadeleistung, fremdEntladeleistung) {
+	let ueberschuss = gridExport - gridImport;
+
+	if (ueberschuss > 0 && ueberschuss < exportThresholdKW) {
+		ueberschuss = 0;
+	} else if (ueberschuss < 0 && Math.abs(ueberschuss) < importThresholdKW) {
+		ueberschuss = 0;
+	}
+
+	const n = speicherListe.length;
+	const zielLeistung = new Array(n).fill(0);
+
+	if (ueberschuss > 0) {
+		// Laden: nur Speicher, die noch nicht voll sind. Das Budget wird um die
+		// aktuelle Entladeleistung der Fremdspeicher gekürzt, damit die EFM-Speicher
+		// nicht deren Energie zum Laden abgreifen.
+		const ladeBudget = Math.max(ueberschuss - fremdEntladeleistung, 0);
+		const kapazitaeten = speicherListe.map(s => (s.soc < s.maxSoc ? s.maxLadeleistung : 0));
+		const mindestleistungen = speicherListe.map(s => s.minLadeleistung);
+		const gewichte = speicherListe.map(s => ladeGewicht(s, minGewicht));
+
+		const verteilt = wasserfallVerteilungMitMindestleistung(ladeBudget, kapazitaeten, mindestleistungen, gewichte);
+		for (let i = 0; i < n; i++) zielLeistung[i] = verteilt[i];
+
+	} else if (ueberschuss < 0) {
+		// Entladen: nur Speicher, die noch nicht leer sind. Das Budget wird um die
+		// aktuelle Ladeleistung der Fremdspeicher gekürzt, damit die EFM-Speicher
+		// diese nicht mit eigener Energie laden.
+		const entladeBudget = Math.max(Math.abs(ueberschuss) - fremdLadeleistung, 0);
+		const kapazitaeten = speicherListe.map(s => (s.soc > s.minSoc ? s.maxEntladeleistung : 0));
+		const mindestleistungen = speicherListe.map(s => s.minEntladeleistung);
+		const gewichte = speicherListe.map(s => entladeGewicht(s, minGewicht));
+
+		const verteilt = wasserfallVerteilungMitMindestleistung(entladeBudget, kapazitaeten, mindestleistungen, gewichte);
+		for (let i = 0; i < n; i++) zielLeistung[i] = -verteilt[i];
+	}
+	// bei ueberschuss === 0 bleibt zielLeistung überall 0
+
+	// --- Rampenbegrenzung: aktuelle Leistung nur schrittweise annähern ---
+	const maxSchritt = rampeKwProS * dtSekunden;
+	const neueLeistung = new Array(n);
+
+	for (let i = 0; i < n; i++) {
+		const ist  = speicherListe[i].aktuelleLeistung || 0;
+		const soll = zielLeistung[i];
+		const delta = soll - ist;
+		const begrenztesDelta = Math.max(-maxSchritt, Math.min(maxSchritt, delta));
+		neueLeistung[i] = ist + begrenztesDelta;
+	}
+
+	const gesamtSpeicherLeistungIst = neueLeistung.reduce((a, b) => a + b, 0);
+	const restLeistung = ueberschuss - gesamtSpeicherLeistungIst;
+
+	return {
+		einspeisung: restLeistung > 0 ? restLeistung : 0,
+		bezug: restLeistung < 0 ? -restLeistung : 0,
+		speicher: speicherListe.map((s, i) => ({
+			id: s.id,
+			leistung: neueLeistung[i]
+		}))
+	};
+}
 
 class EnergyFlowMotion extends utils.Adapter {
 
@@ -265,7 +465,8 @@ class EnergyFlowMotion extends utils.Adapter {
 		await this.efmCalcEnergyHistory(this.powerValues);
 		//Control Energy Storage
 		//await this.energyStorageControl(exportPwrValue, importPwrValue, batDischargePwrValue);
-		await this.energyStorageControl(this.powerValues);
+		//await this.energyStorageControl(this.powerValues);
+		await this.energyStorageControlWaterfall(this.powerValues);
 
 		//Control dynamic Load
 		//await this.loadPowerControl(exportPwrValue, importPwrValue, batDischargePwrValue);
@@ -373,13 +574,16 @@ class EnergyFlowMotion extends utils.Adapter {
 		}
 	}
 
-	async getSumChgPwrFromEsCfgTable(cfgTable){
+	async getSumChgPwrFromEsCfgTable(cfgTable, filterFn){
 		let pwrValue = 0;
 		if (cfgTable && Array.isArray(cfgTable)) {
 			//this.log.info('Is Array');
 			for (let p in cfgTable) {
 				let cfgTableEntry = cfgTable[p];
 				//this.log.info('Entry Selected');
+				if (filterFn && !filterFn(cfgTableEntry)) {
+					continue;
+				}
 				if (cfgTableEntry.esChargePower) {
 					let pwrObjId = cfgTableEntry.esChargePower;
 					let pwrFactor = parseFloat(cfgTableEntry.esChgPwrFactor);
@@ -413,13 +617,16 @@ class EnergyFlowMotion extends utils.Adapter {
 		}
 	}
 
-	async getSumDischgPwrFromEsCfgTable(cfgTable){
+	async getSumDischgPwrFromEsCfgTable(cfgTable, filterFn){
 		let pwrValue = 0;
 		if (cfgTable && Array.isArray(cfgTable)) {
 			//this.log.info('Is Array');
 			for (let p in cfgTable) {
 				let cfgTableEntry = cfgTable[p];
 				//this.log.info('Entry Selected');
+				if (filterFn && !filterFn(cfgTableEntry)) {
+					continue;
+				}
 				if (cfgTableEntry.esDischargePower) {
 					let pwrObjId = cfgTableEntry.esDischargePower;
 					let pwrFactor = parseFloat(cfgTableEntry.esDischgPwrFactor);
@@ -1381,6 +1588,126 @@ class EnergyFlowMotion extends utils.Adapter {
 		}
 	}
 
+
+	/**
+	 * Neue Speichersteuerung: verteilt Netzeinspeisung/-bezug gewichtet nach SoC
+	 * auf alle EFM-gesteuerten Speicherkanäle (Wasserfall-Verteilung mit
+	 * Rampenbegrenzung). Läuft parallel zur bestehenden energyStorageControl().
+	 * @param {PowerValues} pPowerValues
+	 */
+	async energyStorageControlWaterfall(pPowerValues) {
+		if (!this.config.energyStorageControlActive) {
+			return;
+		}
+		const cfgTable = this.config.energyStorageControlChannels;
+		if (!cfgTable || !Array.isArray(cfgTable)) {
+			return;
+		}
+
+		const exportThresholdKW = parseNumOr(this.config.exportThreshold, 50) / 1000;
+		const importThresholdKW = parseNumOr(this.config.importThreshold, 50) / 1000;
+		const rampeKwProS = parseNumOr(this.config.energyStorageRampRate, 0.5);
+		const minGewicht = parseNumOr(this.config.energyStorageMinWeight, 0.01);
+		const dtSekunden = parseInt(this.config.updateInterval) || 2;
+
+		const speicherListe = [];
+		for (const cfgTableEntry of cfgTable) {
+			if (!isEsChannelEfmControlled(cfgTableEntry) || !cfgTableEntry.esChannelTitle) {
+				continue;
+			}
+			const soc = await this.getEsSoCValue(cfgTableEntry.esSoC);
+			if (soc == null) {
+				this.log.warn('energyStorageControlWaterfall: Kein SoC-Wert für Kanal ' + cfgTableEntry.esChannelTitle + ', Kanal wird übersprungen.');
+				continue;
+			}
+			const chargePowerValue = await this.getEsChannelStateValue(cfgTableEntry.esChannelTitle, 'chargePowerValue');
+			const dischargePowerValue = await this.getEsChannelStateValue(cfgTableEntry.esChannelTitle, 'dischargePowerValue');
+			speicherListe.push({
+				id: cfgTableEntry.esChannelTitle,
+				soc: soc,
+				minSoc: parseNumOr(cfgTableEntry.esSoCMin, 0),
+				maxSoc: parseNumOr(cfgTableEntry.esSoCMax, 100),
+				maxLadeleistung: parseNumOr(cfgTableEntry.esMaxChargePower, 0),
+				minLadeleistung: parseNumOr(cfgTableEntry.esMinChargePower, 0),
+				maxEntladeleistung: parseNumOr(cfgTableEntry.esMaxDischargePower, 0),
+				minEntladeleistung: parseNumOr(cfgTableEntry.esMinDischargePower, 0),
+				aktuelleLeistung: chargePowerValue - dischargePowerValue
+			});
+		}
+
+		if (speicherListe.length === 0) {
+			return;
+		}
+
+		// Speicher außerhalb der Speichersteuerung regeln über ihre eigene Logik
+		// bereits selbst auf Netzbezug/-einspeisung = 0. Es genügt daher, das
+		// Lade-/Entladebudget der EFM-Speicher um deren aktuelle Gegenleistung zu
+		// kürzen, damit die EFM-Speicher weder Energie aus den Fremdspeichern
+		// ziehen noch diese über den Umweg laden.
+		const notEfmControlled = cfgTableEntry => !isEsChannelEfmControlled(cfgTableEntry);
+		const fremdLadeleistung = await this.getSumChgPwrFromEsCfgTable(cfgTable, notEfmControlled);
+		const fremdEntladeleistung = await this.getSumDischgPwrFromEsCfgTable(cfgTable, notEfmControlled);
+
+		const ergebnis = regelzyklusSchritt(
+			pPowerValues.exportPwrValue,
+			pPowerValues.importPwrValue,
+			speicherListe,
+			dtSekunden,
+			exportThresholdKW,
+			importThresholdKW,
+			rampeKwProS,
+			minGewicht,
+			fremdLadeleistung,
+			fremdEntladeleistung
+		);
+
+		let sumCharge = 0;
+		let sumDischarge = 0;
+		for (const eintrag of ergebnis.speicher) {
+			const leistung = eintrag.leistung;
+			const chargeOn = leistung > 1e-6;
+			const dischargeOn = leistung < -1e-6;
+			await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + eintrag.id + '.chargeOn', {val: chargeOn, ack: true});
+			await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + eintrag.id + '.chargePowerValue', {val: chargeOn ? leistung : 0, ack: true});
+			await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + eintrag.id + '.dischargeOn', {val: dischargeOn, ack: true});
+			await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + eintrag.id + '.dischargePowerValue', {val: dischargeOn ? -leistung : 0, ack: true});
+			if (chargeOn) {
+				sumCharge += leistung;
+			}
+			if (dischargeOn) {
+				sumDischarge += -leistung;
+			}
+		}
+		await this.setStateAsync(this.namespace + '.energyStorageControl.sumActiveChargePower', {val: sumCharge, ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.sumActiveDischargePower', {val: sumDischarge, ack: true});
+	}
+
+	async getEsSoCValue(socObjId) {
+		if (!socObjId) {
+			return null;
+		}
+		try {
+			const socState = await this.getForeignStateAsync(socObjId);
+			if (socState && socState.val != null) {
+				return parseFloat(socState.val.toString());
+			}
+		} catch (error) {
+			this.log.error(error);
+		}
+		return null;
+	}
+
+	async getEsChannelStateValue(channelTitle, stateName) {
+		try {
+			const state = await this.getForeignStateAsync(this.namespace + '.energyStorageControl.channels.' + channelTitle + '.' + stateName);
+			if (state && state.val != null) {
+				return parseFloat(state.val.toString());
+			}
+		} catch (error) {
+			this.log.error(error);
+		}
+		return 0;
+	}
 
 	leadingZero(num, size) {
 		num = num.toString();

@@ -81,11 +81,13 @@
     },
     "native": {
         "updateInterval": "2",
-        "energyStorageControleActive": "false",
+        "energyStorageControlActive": "false",
 		"importThreshold": "50",
 		"exportThreshold": "50",
 		"powerControlActivationDelay": "1",
 		"powerControlActive": "false",
+		"energyStorageRampRate": "0.5",
+		"energyStorageMinWeight": "0.01",
 		"energyCounterMonthActive": "false",
 		"energyCounterYearActive": "false",
 		"pvPowerDataTable": {

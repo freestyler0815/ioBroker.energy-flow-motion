@@ -30,7 +30,7 @@
 		"**/*.js",
 		"**/*.d.ts",
 		"**/*.jsx"
-	],
+, "esControlTest.js.bak"	],
 	"exclude": [
 		"node_modules/**",
 		"widgets/**"
