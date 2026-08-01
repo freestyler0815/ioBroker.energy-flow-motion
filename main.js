@@ -145,6 +145,14 @@ function parseNumOr(value, fallback) {
 }
 
 /**
+ * Rundet einen kW-Wert auf die dritte Nachkommastelle (1 W) - genauer lässt
+ * sich die meiste aktuelle Speicher-Hardware ohnehin nicht ansteuern.
+ */
+function roundToWatt(valueKW) {
+	return Math.round(valueKW * 1000) / 1000;
+}
+
+/**
  * Ein Speicherkanal gilt als von der Speichersteuerung (EFM) kontrolliert,
  * wenn er aktiviert ist und die EFM-Steuerung für ihn eingeschaltet ist.
  */
@@ -332,8 +340,17 @@ function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, e
 		const ist  = speicherListe[i].aktuelleLeistung || 0;
 		const soll = zielLeistung[i];
 		const delta = soll - ist;
-		const begrenztesDelta = Math.max(-maxSchritt, Math.min(maxSchritt, delta));
-		neueLeistung[i] = ist + begrenztesDelta;
+		if (Math.abs(delta) <= maxSchritt) {
+			// Ziel liegt innerhalb eines Rampenschritts: exakten Wert übernehmen,
+			// statt über ist + begrenztesDelta zu gehen (das ist in Gleitkomma-
+			// Arithmetik nicht garantiert exakt gleich soll).
+			neueLeistung[i] = soll;
+		} else {
+			const begrenztesDelta = Math.max(-maxSchritt, Math.min(maxSchritt, delta));
+			neueLeistung[i] = ist + begrenztesDelta;
+		}
+		// Reale Speicher-Hardware lässt sich meist nicht genauer als auf 1 W ansteuern.
+		neueLeistung[i] = roundToWatt(neueLeistung[i]);
 	}
 
 	// ueberschuss ist nur der Rest NACH der bisherigen Speicherleistung; für den
@@ -1031,7 +1048,12 @@ class EnergyFlowMotion extends utils.Adapter {
 			//Check if Powercontrolchannels exists in the setup
 			if (cfgTable && Array.isArray(cfgTable)) {
 				//powerBudget > 0, activate loadPowerChannels to consume the energy
-				if (powerBudget > 0) {
+				if (powerBudget > 0 && !(await this.areEnergyStoragesSaturated())) {
+					// Die Energiespeicher haben noch freie Ladekapazität und laden noch
+					// nicht mit voller Leistung: der Überschuss bleibt für sie reserviert,
+					// LoadPowerControl-Kanäle werden dieses Mal nicht (weiter) aktiviert.
+					this.log.debug('loadPowerControl: Überschuss bleibt für die Speicherladung reserviert, keine Aktivierung von LoadPowerControl-Kanälen.');
+				} else if (powerBudget > 0) {
 					for (let p in cfgTable) {
 						let cfgTableEntry = cfgTable[p];
 						if (cfgTableEntry.pwcChannelEnabled) {
@@ -1732,6 +1754,45 @@ class EnergyFlowMotion extends utils.Adapter {
 			this.log.error(error);
 		}
 		return 0;
+	}
+
+	/**
+	 * Prüft, ob alle EFM-kontrollierten Energiespeicher entweder voll geladen
+	 * (SoC >= esSoCMax) oder bereits an ihrer maximalen Ladeleistung
+	 * (esMaxChargePower) angekommen sind. Nur dann dürfen LoadPowerControl-
+	 * Kanäle einen PV-Überschuss für sich beanspruchen - solange ein Speicher
+	 * noch Kapazität hat und nicht mit voller Leistung lädt, hat das Laden
+	 * Vorrang.
+	 */
+	async areEnergyStoragesSaturated() {
+		if (!this.config.energyStorageControlActive) {
+			return true;
+		}
+		const cfgTable = this.config.energyStorageControlChannels;
+		if (!cfgTable || !Array.isArray(cfgTable)) {
+			return true;
+		}
+		const toleranzKW = 0.001;
+		for (const cfgTableEntry of cfgTable) {
+			if (!isEsChannelEfmControlled(cfgTableEntry) || !cfgTableEntry.esChannelTitle) {
+				continue;
+			}
+			const soc = await this.getEsSoCValue(cfgTableEntry.esSoC);
+			if (soc == null) {
+				continue;
+			}
+			const maxSoc = parseNumOr(cfgTableEntry.esSoCMax, 100);
+			if (soc >= maxSoc) {
+				continue;
+			}
+			const maxChargePower = parseNumOr(cfgTableEntry.esMaxChargePower, 0);
+			const chargePower = await this.getEsChannelMeasuredPower(cfgTableEntry.esChargePower, cfgTableEntry.esChgPwrFactor);
+			if (chargePower + toleranzKW >= maxChargePower) {
+				continue;
+			}
+			return false;
+		}
+		return true;
 	}
 
 	leadingZero(num, size) {
