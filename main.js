@@ -512,6 +512,20 @@ class EnergyFlowMotion extends utils.Adapter {
 	}
 
 	async getLoadPowerSumValue(){
+		if (this.config.loadPowerCalculated) {
+			// Energiebilanz: Last = PV-Leistung - Einspeisung + Bezug + Akkuentladung - Akkuladung
+			const pvPwrValue = await this.getPvPowerSumValue();
+			const exportPwrValue = await this.getGridExportPowerSumValue();
+			const importPwrValue = await this.getGridImportPowerSumValue();
+			const batChargePwrValue = await this.getBatteryChargePowerSumValue();
+			const batDischargePwrValue = await this.getBatteryDischargePowerSumValue();
+			let pwrValue = pvPwrValue - exportPwrValue + importPwrValue + batDischargePwrValue - batChargePwrValue;
+			if (pwrValue < 0) {
+				pwrValue = 0;
+			}
+			this.log.debug('LoadPowerSum (berechnet): ' + pwrValue + ' kW');
+			return pwrValue;
+		}
 		const pwrValue = await this.getSumValuesFromCfgTables(this.config.loadDataTable);
 		this.log.debug('LoadPowerSum: ' + pwrValue + ' kW');
 		return pwrValue;

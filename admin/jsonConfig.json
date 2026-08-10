@@ -160,9 +160,19 @@
             "type": "panel",
             "label": "Load Power Data",
             "items": {
+                "loadPowerCalculated":{
+                        "type": "checkbox",
+                        "sm": 2,
+                        "md": 2,
+                        "lg": 2,
+                        "default": false,
+                        "label": "Calculate Load Power",
+                        "help": "Instead of reading Load Power from the table below, calculate it as PV Power - Grid Export + Grid Import + Battery Discharge - Battery Charge"
+                },
                 "loadDataTable":{
                     "type": "table",
                     "label": "Load Power Data Source Table",
+                    "hidden": "data.loadPowerCalculated === true",
                     "items": [
                         {
                             "type": "objectId",
