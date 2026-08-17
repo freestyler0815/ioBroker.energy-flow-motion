@@ -240,23 +240,26 @@ function wasserfallVerteilungMitMindestleistung(gesamt, kapazitaeten, mindestlei
 }
 
 /**
- * Gewicht eines Speichers fürs Entladen: höherer SoC (relativ zum nutzbaren
- * Bereich) -> höheres Gewicht -> mehr Anteil.
+ * Gewicht eines Speichers fürs Entladen: die noch verfügbaren kWh bis minSoc
+ * (aus aktuellem SoC und tatsächlicher kWh-Kapazität, NICHT maxLadeleistung/
+ * maxEntladeleistung - das sind nur Leistungs-Obergrenzen in kW). Mehr
+ * verfügbare kWh -> höheres Gewicht -> mehr Anteil, damit die größten
+ * Speicher auch die meiste Energie entladen.
  */
 function entladeGewicht(s, minGewicht) {
-	const spanne = Math.max(s.maxSoc - s.minSoc, 1e-6);
-	const relativ = (s.soc - s.minSoc) / spanne;
-	return Math.max(relativ, minGewicht);
+	const verfuegbareKWh = Math.max((s.soc - s.minSoc) / 100 * s.capacityKWh, 0);
+	return Math.max(verfuegbareKWh, minGewicht);
 }
 
 /**
- * Gewicht eines Speichers fürs Laden: niedrigerer SoC (mehr freier Platz)
- * -> höheres Gewicht -> mehr Anteil.
+ * Gewicht eines Speichers fürs Laden: die noch freien kWh bis maxSoc (aus
+ * aktuellem SoC und tatsächlicher kWh-Kapazität). Mehr freie kWh -> höheres
+ * Gewicht -> mehr Anteil, damit die größten Speicher auch die meiste Energie
+ * laden.
  */
 function ladeGewicht(s, minGewicht) {
-	const spanne = Math.max(s.maxSoc - s.minSoc, 1e-6);
-	const relativ = (s.maxSoc - s.soc) / spanne;
-	return Math.max(relativ, minGewicht);
+	const freieKWh = Math.max((s.maxSoc - s.soc) / 100 * s.capacityKWh, 0);
+	return Math.max(freieKWh, minGewicht);
 }
 
 /**
@@ -1682,6 +1685,7 @@ class EnergyFlowMotion extends utils.Adapter {
 				minLadeleistung: parseNumOr(cfgTableEntry.esMinChargePower, 0),
 				maxEntladeleistung: parseNumOr(cfgTableEntry.esMaxDischargePower, 0),
 				minEntladeleistung: parseNumOr(cfgTableEntry.esMinDischargePower, 0),
+				capacityKWh: parseNumOr(cfgTableEntry.esCapacity, 0),
 				aktuelleLeistung: chargePowerValue - dischargePowerValue
 			});
 		}
