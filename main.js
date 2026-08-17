@@ -1703,6 +1703,14 @@ class EnergyFlowMotion extends utils.Adapter {
 		const fremdLadeleistung = await this.getSumChgPwrFromEsCfgTable(cfgTable, notEfmControlled);
 		const fremdEntladeleistung = await this.getSumDischgPwrFromEsCfgTable(cfgTable, notEfmControlled);
 
+		this.log.debug('energyStorageControlWaterfall: gridExport=' + pPowerValues.exportPwrValue + 'kW, gridImport=' + pPowerValues.importPwrValue
+			+ 'kW, fremdLadeleistung=' + fremdLadeleistung + 'kW, fremdEntladeleistung=' + fremdEntladeleistung + 'kW');
+		for (const s of speicherListe) {
+			this.log.debug('energyStorageControlWaterfall: Speicher ' + s.id + ': soc=' + s.soc + '%, minSoc=' + s.minSoc + '%, maxSoc=' + s.maxSoc
+				+ '%, capacity=' + s.capacityKWh + 'kWh, aktuelleLeistung=' + s.aktuelleLeistung + 'kW, ladeGewicht=' + ladeGewicht(s, minGewicht)
+				+ ', entladeGewicht=' + entladeGewicht(s, minGewicht));
+		}
+
 		const ergebnis = regelzyklusSchritt(
 			pPowerValues.exportPwrValue,
 			pPowerValues.importPwrValue,
@@ -1715,6 +1723,9 @@ class EnergyFlowMotion extends utils.Adapter {
 			fremdLadeleistung,
 			fremdEntladeleistung
 		);
+
+		this.log.debug('energyStorageControlWaterfall: Ergebnis: ' + JSON.stringify(ergebnis.speicher)
+			+ ', restEinspeisung=' + ergebnis.einspeisung + 'kW, restBezug=' + ergebnis.bezug + 'kW');
 
 		let sumCharge = 0;
 		let sumDischarge = 0;
