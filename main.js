@@ -1511,6 +1511,18 @@ class EnergyFlowMotion extends utils.Adapter {
 			},
 			native: {},
 		});
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.trackingError' , {
+			type: 'state',
+			common: {
+				name: 'TrackingError (befohlen - gemessen)',
+				type: 'number',
+				role: 'value',
+				unit: 'kW',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
 		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.shutdownDelay' , {
 			type: 'state',
 			common: {
@@ -1540,6 +1552,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.chargePowerValue', {val: 0, ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.dischargeOn', {val: false, ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.dischargePowerValue', {val: 0, ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.trackingError', {val: 0, ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.shutdownDelay', {val: parseFloat(cfgTableEntry.esChannelShutdownDelay), ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.activationDelay', {val: parseFloat(cfgTableEntry.esChannelActivationDelay), ack: true});
 	}
@@ -1691,6 +1704,18 @@ class EnergyFlowMotion extends utils.Adapter {
 			}
 			const chargePowerValue = await this.getEsChannelMeasuredPower(cfgTableEntry.esChargePower, cfgTableEntry.esChgPwrFactor);
 			const dischargePowerValue = await this.getEsChannelMeasuredPower(cfgTableEntry.esDischargePower, cfgTableEntry.esDischgPwrFactor);
+			const aktuelleLeistung = chargePowerValue - dischargePowerValue;
+
+			// Diagnose: Abweichung zwischen dem im letzten Zyklus befohlenen Wert
+			// (eigener chargePowerValue/dischargePowerValue-State) und dem jetzt
+			// tatsächlich gemessenen Wert - hilft z.B. Ladestrombegrenzungen (DVCC
+			// o.ä.) zu erkennen, die den Zielwert systematisch unterschreiten.
+			const commandedLeistung = await this.getEsChannelCommandedPower(cfgTableEntry.esChannelTitle);
+			const trackingError = roundToWatt(commandedLeistung - aktuelleLeistung);
+			await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.trackingError', {val: trackingError, ack: true});
+			this.log.debug('energyStorageControlWaterfall: Speicher ' + cfgTableEntry.esChannelTitle + ': befohlen(letzter Zyklus)=' + commandedLeistung
+				+ 'kW, gemessen=' + aktuelleLeistung + 'kW, trackingError=' + trackingError + 'kW');
+
 			speicherListe.push({
 				id: cfgTableEntry.esChannelTitle,
 				soc: soc,
@@ -1701,7 +1726,7 @@ class EnergyFlowMotion extends utils.Adapter {
 				maxEntladeleistung: parseNumOr(cfgTableEntry.esMaxDischargePower, 0),
 				minEntladeleistung: parseNumOr(cfgTableEntry.esMinDischargePower, 0),
 				capacityKWh: parseNumOr(cfgTableEntry.esCapacity, 0),
-				aktuelleLeistung: chargePowerValue - dischargePowerValue
+				aktuelleLeistung: aktuelleLeistung
 			});
 		}
 
@@ -1722,8 +1747,9 @@ class EnergyFlowMotion extends utils.Adapter {
 			+ 'kW, fremdLadeleistung=' + fremdLadeleistung + 'kW, fremdEntladeleistung=' + fremdEntladeleistung + 'kW');
 		for (const s of speicherListe) {
 			this.log.debug('energyStorageControlWaterfall: Speicher ' + s.id + ': soc=' + s.soc + '%, minSoc=' + s.minSoc + '%, maxSoc=' + s.maxSoc
-				+ '%, capacity=' + s.capacityKWh + 'kWh, aktuelleLeistung=' + s.aktuelleLeistung + 'kW, ladeGewicht=' + ladeGewicht(s, minGewicht)
-				+ ', entladeGewicht=' + entladeGewicht(s, minGewicht));
+				+ '%, capacity=' + s.capacityKWh + 'kWh, aktuelleLeistung=' + s.aktuelleLeistung + 'kW, maxLadeleistung=' + s.maxLadeleistung
+				+ 'kW, minLadeleistung=' + s.minLadeleistung + 'kW, maxEntladeleistung=' + s.maxEntladeleistung + 'kW, minEntladeleistung='
+				+ s.minEntladeleistung + 'kW, ladeGewicht=' + ladeGewicht(s, minGewicht) + ', entladeGewicht=' + entladeGewicht(s, minGewicht));
 		}
 
 		const ergebnis = regelzyklusSchritt(
@@ -1798,6 +1824,26 @@ class EnergyFlowMotion extends utils.Adapter {
 			this.log.error(error);
 		}
 		return 0;
+	}
+
+	/**
+	 * Liest den zuletzt von diesem Adapter befohlenen Lade-/Entladewert eines
+	 * Speicherkanals aus dessen eigenem chargePowerValue/dischargePowerValue-
+	 * State (nicht aus dem realen Sensor) - ausschließlich für die
+	 * Tracking-Error-Diagnose, nicht für die Regelung selbst (die arbeitet mit
+	 * dem tatsächlich gemessenen Wert, siehe getEsChannelMeasuredPower).
+	 */
+	async getEsChannelCommandedPower(channelTitle) {
+		try {
+			const chargeState = await this.getForeignStateAsync(this.namespace + '.energyStorageControl.channels.' + channelTitle + '.chargePowerValue');
+			const dischargeState = await this.getForeignStateAsync(this.namespace + '.energyStorageControl.channels.' + channelTitle + '.dischargePowerValue');
+			const charge = (chargeState && chargeState.val != null) ? parseFloat(chargeState.val.toString()) : 0;
+			const discharge = (dischargeState && dischargeState.val != null) ? parseFloat(dischargeState.val.toString()) : 0;
+			return charge - discharge;
+		} catch (error) {
+			this.log.error(error);
+			return 0;
+		}
 	}
 
 	/**
