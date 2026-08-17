@@ -152,6 +152,51 @@ function roundToWatt(valueKW) {
 	return Math.round(valueKW * 1000) / 1000;
 }
 
+// Compliance-Erkennung (siehe updateChannelCompliance): ein Kanal, der wiederholt
+// das Gegenteil des befohlenen Werts liefert (z.B. ein BMS, das einen externen
+// Entladebefehl durch einen eigenen Vollladezyklus zur Zellbalancierung
+// überschreibt), wird vorübergehend von der Verteilung ausgeschlossen.
+const COMPLIANCE_MIN_BEFEHL_KW = 0.05;
+const COMPLIANCE_MIN_ABWEICHUNG_KW = 0.02;
+const COMPLIANCE_STREAK_SCHWELLE = 3;
+const COMPLIANCE_AUSSCHLUSS_ZYKLEN = 10;
+
+/**
+ * Aktualisiert die Compliance-Historie eines Speicherkanals und entscheidet,
+ * ob er wegen wiederholt gegenläufigen Ist-Werten (Vorzeichen entgegengesetzt
+ * zum Befehl) vorübergehend von der Lade-/Entladeverteilung ausgeschlossen
+ * werden soll.
+ *
+ * @param {Map<string, {streak: number, cooldown: number}>} complianceMap
+ * @param {string} channelTitle
+ * @param {number} commandedLeistung  im letzten Zyklus befohlener Wert (kW, + Laden/- Entladen)
+ * @param {number} aktuelleLeistung   jetzt gemessener Wert (kW, + Laden/- Entladen)
+ * @returns {boolean} true, wenn der Kanal aktuell ausgeschlossen ist
+ */
+function updateChannelCompliance(complianceMap, channelTitle, commandedLeistung, aktuelleLeistung) {
+	const state = complianceMap.get(channelTitle) || { streak: 0, cooldown: 0 };
+
+	const befehlWarAussagekraeftig = Math.abs(commandedLeistung) >= COMPLIANCE_MIN_BEFEHL_KW;
+	const istGegenlaeufig = befehlWarAussagekraeftig
+		&& Math.abs(aktuelleLeistung) >= COMPLIANCE_MIN_ABWEICHUNG_KW
+		&& Math.sign(aktuelleLeistung) !== Math.sign(commandedLeistung);
+
+	if (state.cooldown > 0) {
+		state.cooldown -= 1;
+	} else if (istGegenlaeufig) {
+		state.streak += 1;
+		if (state.streak >= COMPLIANCE_STREAK_SCHWELLE) {
+			state.cooldown = COMPLIANCE_AUSSCHLUSS_ZYKLEN;
+			state.streak = 0;
+		}
+	} else {
+		state.streak = 0;
+	}
+
+	complianceMap.set(channelTitle, state);
+	return state.cooldown > 0;
+}
+
 /**
  * Ein Speicherkanal gilt als von der Speichersteuerung (EFM) kontrolliert,
  * wenn er aktiviert ist und die EFM-Steuerung für ihn eingeschaltet ist.
@@ -289,7 +334,8 @@ function ladeGewicht(s, minGewicht) {
  *   {
  *     id, soc, minSoc, maxSoc,
  *     maxLadeleistung, minLadeleistung, maxEntladeleistung, minEntladeleistung,
- *     aktuelleLeistung   // Zustand aus letztem Zyklus! + = Laden, - = Entladen
+ *     aktuelleLeistung,  // Zustand aus letztem Zyklus! + = Laden, - = Entladen
+ *     nichtKonform       // true = Kanal wird wegen Compliance-Verstoß temporär von der Verteilung ausgeschlossen
  *   }
  * @param {number} dtSekunden          Zeit seit letztem Zyklus in Sekunden
  * @param {number} exportThresholdKW   Totband auf der Einspeiseseite (gleicher Schwellwert wie sonst im Adapter für "exportThreshold")
@@ -328,7 +374,7 @@ function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, e
 		// und konvergiert bei ca. der Hälfte des verfügbaren Überschusses).
 		const aktuelleGesamtLadeleistung = speicherListe.reduce((sum, s) => sum + Math.max(s.aktuelleLeistung || 0, 0), 0);
 		const ladeZielGesamt = Math.max((ueberschuss - fremdEntladeleistung) + aktuelleGesamtLadeleistung, 0);
-		const kapazitaeten = speicherListe.map(s => (s.soc < s.maxSoc ? s.maxLadeleistung : 0));
+		const kapazitaeten = speicherListe.map(s => (s.soc < s.maxSoc && !s.nichtKonform ? s.maxLadeleistung : 0));
 		const mindestleistungen = speicherListe.map(s => s.minLadeleistung);
 		const gewichte = speicherListe.map(s => ladeGewicht(s, minGewicht));
 
@@ -341,7 +387,7 @@ function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, e
 		// Entladeleistung).
 		const aktuelleGesamtEntladeleistung = speicherListe.reduce((sum, s) => sum + Math.max(-(s.aktuelleLeistung || 0), 0), 0);
 		const entladeZielGesamt = Math.max((Math.abs(ueberschuss) - fremdLadeleistung) + aktuelleGesamtEntladeleistung, 0);
-		const kapazitaeten = speicherListe.map(s => (s.soc > s.minSoc ? s.maxEntladeleistung : 0));
+		const kapazitaeten = speicherListe.map(s => (s.soc > s.minSoc && !s.nichtKonform ? s.maxEntladeleistung : 0));
 		const mindestleistungen = speicherListe.map(s => s.minEntladeleistung);
 		const gewichte = speicherListe.map(s => entladeGewicht(s, minGewicht));
 
@@ -408,6 +454,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		this.on('unload', this.onUnload.bind(this));
 		this.powerValues = new PowerValues(0,0,0,0,0,0,0,this);
 		this.simulator = new EnergyFlowSimulator(this);
+		this.channelCompliance = new Map();
 	}
 	/**
 	 * Is called when databases are connected and adapter received configuration.
@@ -1523,6 +1570,17 @@ class EnergyFlowMotion extends utils.Adapter {
 			},
 			native: {},
 		});
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.nichtKonform' , {
+			type: 'state',
+			common: {
+				name: 'Nicht konform (temporär von Verteilung ausgeschlossen)',
+				type: 'boolean',
+				role: 'indicator',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
 		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.shutdownDelay' , {
 			type: 'state',
 			common: {
@@ -1553,6 +1611,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.dischargeOn', {val: false, ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.dischargePowerValue', {val: 0, ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.trackingError', {val: 0, ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.nichtKonform', {val: false, ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.shutdownDelay', {val: parseFloat(cfgTableEntry.esChannelShutdownDelay), ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.activationDelay', {val: parseFloat(cfgTableEntry.esChannelActivationDelay), ack: true});
 	}
@@ -1716,6 +1775,16 @@ class EnergyFlowMotion extends utils.Adapter {
 			this.log.debug('energyStorageControlWaterfall: Speicher ' + cfgTableEntry.esChannelTitle + ': befohlen(letzter Zyklus)=' + commandedLeistung
 				+ 'kW, gemessen=' + aktuelleLeistung + 'kW, trackingError=' + trackingError + 'kW');
 
+			// Compliance: Kanal wird vorübergehend von der Verteilung ausgeschlossen,
+			// wenn er wiederholt das Gegenteil des Befehls liefert (z.B. BMS führt
+			// trotz Entladebefehl einen eigenen Vollladezyklus zur Zellbalancierung
+			// durch) - damit übernehmen zuverlässige Kanäle die Differenz.
+			const nichtKonform = updateChannelCompliance(this.channelCompliance, cfgTableEntry.esChannelTitle, commandedLeistung, aktuelleLeistung);
+			await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.nichtKonform', {val: nichtKonform, ack: true});
+			if (nichtKonform) {
+				this.log.warn('energyStorageControlWaterfall: Speicher ' + cfgTableEntry.esChannelTitle + ' liefert wiederholt das Gegenteil des Befehls und wird vorübergehend von der Verteilung ausgeschlossen.');
+			}
+
 			speicherListe.push({
 				id: cfgTableEntry.esChannelTitle,
 				soc: soc,
@@ -1726,7 +1795,8 @@ class EnergyFlowMotion extends utils.Adapter {
 				maxEntladeleistung: parseNumOr(cfgTableEntry.esMaxDischargePower, 0),
 				minEntladeleistung: parseNumOr(cfgTableEntry.esMinDischargePower, 0),
 				capacityKWh: parseNumOr(cfgTableEntry.esCapacity, 0),
-				aktuelleLeistung: aktuelleLeistung
+				aktuelleLeistung: aktuelleLeistung,
+				nichtKonform: nichtKonform
 			});
 		}
 
