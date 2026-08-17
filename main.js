@@ -155,11 +155,14 @@ function roundToWatt(valueKW) {
 // Compliance-Erkennung (siehe updateChannelCompliance): ein Kanal, der wiederholt
 // das Gegenteil des befohlenen Werts liefert (z.B. ein BMS, das einen externen
 // Entladebefehl durch einen eigenen Vollladezyklus zur Zellbalancierung
-// überschreibt), wird vorübergehend von der Verteilung ausgeschlossen.
+// überschreibt), wird vorübergehend von der Verteilung ausgeschlossen. Wie viele
+// Versuche (Streak-Schwelle) und wie viele Zyklen Aussetzen (Cooldown) gelten,
+// wird je Speicherkanal über esComplianceStreakThreshold/esComplianceCooldownCycles
+// konfiguriert (siehe Werte unten als Fallback, falls nicht konfiguriert).
 const COMPLIANCE_MIN_BEFEHL_KW = 0.05;
 const COMPLIANCE_MIN_ABWEICHUNG_KW = 0.02;
-const COMPLIANCE_STREAK_SCHWELLE = 3;
-const COMPLIANCE_AUSSCHLUSS_ZYKLEN = 10;
+const COMPLIANCE_STREAK_SCHWELLE_STANDARD = 3;
+const COMPLIANCE_AUSSCHLUSS_ZYKLEN_STANDARD = 10;
 
 /**
  * Aktualisiert die Compliance-Historie eines Speicherkanals und entscheidet,
@@ -171,9 +174,11 @@ const COMPLIANCE_AUSSCHLUSS_ZYKLEN = 10;
  * @param {string} channelTitle
  * @param {number} commandedLeistung  im letzten Zyklus befohlener Wert (kW, + Laden/- Entladen)
  * @param {number} aktuelleLeistung   jetzt gemessener Wert (kW, + Laden/- Entladen)
+ * @param {number} streakSchwelle     Anzahl aufeinanderfolgender gegenläufiger Zyklen bis zum Ausschluss
+ * @param {number} ausschlussZyklen   Anzahl Zyklen, die der Kanal nach Überschreiten der Schwelle ausgeschlossen bleibt
  * @returns {boolean} true, wenn der Kanal aktuell ausgeschlossen ist
  */
-function updateChannelCompliance(complianceMap, channelTitle, commandedLeistung, aktuelleLeistung) {
+function updateChannelCompliance(complianceMap, channelTitle, commandedLeistung, aktuelleLeistung, streakSchwelle, ausschlussZyklen) {
 	const state = complianceMap.get(channelTitle) || { streak: 0, cooldown: 0 };
 
 	const befehlWarAussagekraeftig = Math.abs(commandedLeistung) >= COMPLIANCE_MIN_BEFEHL_KW;
@@ -185,8 +190,8 @@ function updateChannelCompliance(complianceMap, channelTitle, commandedLeistung,
 		state.cooldown -= 1;
 	} else if (istGegenlaeufig) {
 		state.streak += 1;
-		if (state.streak >= COMPLIANCE_STREAK_SCHWELLE) {
-			state.cooldown = COMPLIANCE_AUSSCHLUSS_ZYKLEN;
+		if (state.streak >= streakSchwelle) {
+			state.cooldown = ausschlussZyklen;
 			state.streak = 0;
 		}
 	} else {
@@ -1779,7 +1784,9 @@ class EnergyFlowMotion extends utils.Adapter {
 			// wenn er wiederholt das Gegenteil des Befehls liefert (z.B. BMS führt
 			// trotz Entladebefehl einen eigenen Vollladezyklus zur Zellbalancierung
 			// durch) - damit übernehmen zuverlässige Kanäle die Differenz.
-			const nichtKonform = updateChannelCompliance(this.channelCompliance, cfgTableEntry.esChannelTitle, commandedLeistung, aktuelleLeistung);
+			const complianceStreakSchwelle = parseNumOr(cfgTableEntry.esComplianceStreakThreshold, COMPLIANCE_STREAK_SCHWELLE_STANDARD);
+			const complianceAusschlussZyklen = parseNumOr(cfgTableEntry.esComplianceCooldownCycles, COMPLIANCE_AUSSCHLUSS_ZYKLEN_STANDARD);
+			const nichtKonform = updateChannelCompliance(this.channelCompliance, cfgTableEntry.esChannelTitle, commandedLeistung, aktuelleLeistung, complianceStreakSchwelle, complianceAusschlussZyklen);
 			await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.nichtKonform', {val: nichtKonform, ack: true});
 			if (nichtKonform) {
 				this.log.warn('energyStorageControlWaterfall: Speicher ' + cfgTableEntry.esChannelTitle + ' liefert wiederholt das Gegenteil des Befehls und wird vorübergehend von der Verteilung ausgeschlossen.');

@@ -568,6 +568,32 @@
                         {
                             "type": "number",
                             "width": "50px",
+                            "title": {"en": "Compliance Streak Threshold"},
+                            "attr": "esComplianceStreakThreshold",
+                            "filter": false,
+                            "step": 1,
+                            "min": 1,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": "3",
+                            "help": "Number of consecutive cycles with an opposite-of-commanded result before the channel is temporarily excluded"
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
+                            "title": {"en": "Compliance Cooldown (cycles)"},
+                            "attr": "esComplianceCooldownCycles",
+                            "filter": false,
+                            "step": 1,
+                            "min": 0,
+                            "sort": true,
+                            "style":{"textAlign": "right"},
+                            "default": "10",
+                            "help": "Number of cycles the channel stays excluded from the distribution after exceeding the streak threshold"
+                        },
+                        {
+                            "type": "number",
+                            "width": "50px",
                             "title": {"en": "Shutdown Delay (s)"},
                             "attr": "esChannelShutdownDelay",
                             "filter": false,

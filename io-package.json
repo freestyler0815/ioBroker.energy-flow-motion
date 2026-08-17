@@ -137,6 +137,8 @@
 			"esSoCMin": "",
 			"esSoC": "",
 			"esCapacity": "",
+			"esComplianceStreakThreshold": "3",
+			"esComplianceCooldownCycles": "10",
 			"esChannelShutdownDelay": "1",
 			"esChannelActivationDelay": "1"
 		}
