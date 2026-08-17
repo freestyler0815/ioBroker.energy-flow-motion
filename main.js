@@ -208,6 +208,13 @@ function wasserfallVerteilungGewichtet(gesamt, kapazitaeten, gewichte) {
  * fairer Anteil zwar >0, aber unterhalb ihrer Mindestleistung liegt.
  * Der dadurch frei werdende Anteil wird auf die übrigen Speicher verteilt.
  *
+ * Ausgeschlossen wird dabei je Runde nur EIN Speicher - der relativ zu seiner
+ * eigenen Mindestleistung am weitesten davon entfernte (schlechtestes
+ * Anteil/Mindestleistung-Verhältnis). So kann sich eine kleine Restmenge auf
+ * wenige geeignete Speicher konzentrieren, statt (wenn alle Anteile bei einer
+ * gemeinsamen Verteilung gleichzeitig unter ihrer jeweiligen Mindestleistung
+ * lägen) komplett verworfen zu werden.
+ *
  * @param {number} gesamt
  * @param {number[]} kapazitaeten
  * @param {number[]} mindestleistungen  Mindestleistung je Speicher (>= 0)
@@ -223,15 +230,23 @@ function wasserfallVerteilungMitMindestleistung(gesamt, kapazitaeten, mindestlei
 		const aktiveKapazitaeten = kapazitaeten.map((k, i) => (ausgeschlossen[i] ? 0 : k));
 		const teilergebnis = wasserfallVerteilungGewichtet(gesamt, aktiveKapazitaeten, gewichte);
 
-		let neuAusgeschlossen = false;
+		let schlechtesterIndex = -1;
+		let schlechtesteQuote = Infinity;
 		for (let i = 0; i < n; i++) {
 			if (!ausgeschlossen[i] && teilergebnis[i] > 1e-9 && teilergebnis[i] < mindestleistungen[i]) {
-				ausgeschlossen[i] = true;
-				neuAusgeschlossen = true;
+				const quote = teilergebnis[i] / mindestleistungen[i];
+				if (quote < schlechtesteQuote) {
+					schlechtesteQuote = quote;
+					schlechtesterIndex = i;
+				}
 			}
 		}
 
-		if (!neuAusgeschlossen) {
+		if (schlechtesterIndex !== -1) {
+			ausgeschlossen[schlechtesterIndex] = true;
+		}
+
+		if (schlechtesterIndex === -1) {
 			ergebnis = teilergebnis;
 			break;
 		}
