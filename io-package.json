@@ -84,6 +84,7 @@
         "energyStorageControlActive": "false",
 		"importThreshold": "50",
 		"exportThreshold": "50",
+		"gridSetpoint": "0",
 		"powerControlActivationDelay": "1",
 		"powerControlActive": "false",
 		"energyStorageRampRate": "0.5",

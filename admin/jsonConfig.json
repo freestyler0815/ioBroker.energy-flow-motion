@@ -39,6 +39,18 @@
                         "label": "Export Power Threshold (W)",
                         "help": "Threshold in Watt to detect exporting Power to Grid (0W to 500W possible). Also used as the deadband for the energy storage waterfall control."
                 },
+                "gridSetpoint":{
+                        "type": "number",
+                        "min": -5000,
+                        "max": 5000,
+                        "step": 1,
+                        "sm": 2,
+                        "md": 2,
+                        "lg": 2,
+                        "default": 0,
+                        "label": "Grid Setpoint (W)",
+                        "help": "Grid balance the energy storage waterfall control always aims for: positive = always keep exporting this many Watt, negative = tolerate this much import. Use a small positive value as a safety margin against control losses that would otherwise cause (expensive) grid import."
+                },
                 "PVkWp":{
                         "type": "number",
                         "sm": 2,

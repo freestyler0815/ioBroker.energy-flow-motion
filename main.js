@@ -353,11 +353,15 @@ function ladeGewicht(s, minGewicht) {
  * @param {number} fremdEntladeleistung aktuelle Entladeleistung der nicht EFM-kontrollierten Speicher (kW, >= 0);
  *                                     reduziert das Ladebudget der EFM-Speicher, damit diese sich nicht
  *                                     aus den Fremdspeichern laden
+ * @param {number} netzSollwertKW      gewünschter Netzsaldo (kW): + = immer diese Einspeisung anstreben,
+ *                                     - = so viel Bezug tolerieren. Dient als Sicherheitsmarge gegen
+ *                                     Regelverluste, die sonst zu (teurem) Netzbezug führen könnten.
  * @returns {Object} { einspeisung, bezug, speicher: [{id, leistung}] }
  *          leistung: + = Laden, - = Entladen (kW)
+ *          einspeisung/bezug beziehen sich auf den Netzsollwert, nicht auf 0
  */
-function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, exportThresholdKW, importThresholdKW, rampeKwProS, minGewicht, fremdLadeleistung, fremdEntladeleistung) {
-	let ueberschuss = gridExport - gridImport;
+function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, exportThresholdKW, importThresholdKW, rampeKwProS, minGewicht, fremdLadeleistung, fremdEntladeleistung, netzSollwertKW) {
+	let ueberschuss = (gridExport - gridImport) - (netzSollwertKW || 0);
 
 	if (ueberschuss > 0 && ueberschuss < exportThresholdKW) {
 		ueberschuss = 0;
@@ -1754,6 +1758,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		const importThresholdKW = parseNumOr(this.config.importThreshold, 50) / 1000;
 		const rampeKwProS = parseNumOr(this.config.energyStorageRampRate, 0.5);
 		const minGewicht = parseNumOr(this.config.energyStorageMinWeight, 0.01);
+		const netzSollwertKW = parseNumOr(this.config.gridSetpoint, 0) / 1000;
 		const dtSekunden = parseInt(this.config.updateInterval) || 2;
 
 		const speicherListe = [];
@@ -1821,7 +1826,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		const fremdEntladeleistung = await this.getSumDischgPwrFromEsCfgTable(cfgTable, notEfmControlled);
 
 		this.log.debug('energyStorageControlWaterfall: gridExport=' + pPowerValues.exportPwrValue + 'kW, gridImport=' + pPowerValues.importPwrValue
-			+ 'kW, fremdLadeleistung=' + fremdLadeleistung + 'kW, fremdEntladeleistung=' + fremdEntladeleistung + 'kW');
+			+ 'kW, fremdLadeleistung=' + fremdLadeleistung + 'kW, fremdEntladeleistung=' + fremdEntladeleistung + 'kW, netzSollwert=' + netzSollwertKW + 'kW');
 		for (const s of speicherListe) {
 			this.log.debug('energyStorageControlWaterfall: Speicher ' + s.id + ': soc=' + s.soc + '%, minSoc=' + s.minSoc + '%, maxSoc=' + s.maxSoc
 				+ '%, capacity=' + s.capacityKWh + 'kWh, aktuelleLeistung=' + s.aktuelleLeistung + 'kW, maxLadeleistung=' + s.maxLadeleistung
@@ -1839,7 +1844,8 @@ class EnergyFlowMotion extends utils.Adapter {
 			rampeKwProS,
 			minGewicht,
 			fremdLadeleistung,
-			fremdEntladeleistung
+			fremdEntladeleistung,
+			netzSollwertKW
 		);
 
 		this.log.debug('energyStorageControlWaterfall: Ergebnis: ' + JSON.stringify(ergebnis.speicher)
