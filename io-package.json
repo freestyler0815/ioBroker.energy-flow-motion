@@ -89,6 +89,7 @@
 		"powerControlActive": "false",
 		"energyStorageRampRate": "0.5",
 		"energyStorageMinWeight": "0.01",
+		"responsivenessLearningActive": "false",
 		"simulationActive": "false",
 		"simulationRampRate": "0.2",
 		"loadPowerCalculated": "false",

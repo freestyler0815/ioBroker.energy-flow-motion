@@ -114,6 +114,16 @@
                         "label": "Energy Storage Min. Weight",
                         "help": "Prevents a channel's distribution weight from becoming zero when SoC is exactly at its limit"
                 },
+                "responsivenessLearningActive":{
+                        "newLine": true,
+                        "type": "checkbox",
+                        "sm": 2,
+                        "md": 1,
+                        "lg": 1,
+                        "default": false,
+                        "label": "Responsiveness Learning Active",
+                        "help": "Learns online how quickly each storage channel follows commands and prioritizes fast channels for short-term spikes while slow channels cover the stable baseline demand"
+                },
                 "energyCounterMonthActive":{
                     "newLine": true,
                     "type": "checkbox",

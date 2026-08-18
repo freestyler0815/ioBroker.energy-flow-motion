@@ -202,6 +202,41 @@ function updateChannelCompliance(complianceMap, channelTitle, commandedLeistung,
 	return state.cooldown > 0;
 }
 
+// Lernmechanismus für Reaktionsgeschwindigkeit (optional, siehe responsivenessLearningActive):
+// pro Kanal wird online gelernt, welcher Anteil der Regelabweichung er im Schnitt
+// pro Zyklus schließt (0 = extrem träge, 1 = sofort exakt). 0.5 = neutral/noch
+// ungelernt und hat dann KEINEN Effekt auf die Gewichtung (siehe regelzyklusSchritt).
+const RESPONSIVENESS_LERNRATE_ALPHA = 0.15;
+const RESPONSIVENESS_BASELINE_ALPHA = 0.05;
+const RESPONSIVENESS_LERNRATE_STANDARD = 0.5;
+
+/**
+ * Aktualisiert die gelernte Reaktionsgeschwindigkeit eines Speicherkanals: wie
+ * groß war die Regelabweichung vor diesem Zyklus (Differenz aus Befehl und
+ * dem zuvor gemessenen Wert), und welcher Anteil davon wurde in diesem einen
+ * Zyklus geschlossen? Dieser Anteil wird per EWMA geglättet gelernt.
+ *
+ * @param {Map<string, {lastMeasured: number, lernrate: number}>} responsivenessMap
+ * @param {string} channelTitle
+ * @param {number} commandedLeistung  im letzten Zyklus befohlener Wert (kW, + Laden/- Entladen)
+ * @param {number} aktuelleLeistung   jetzt gemessener Wert (kW, + Laden/- Entladen)
+ * @returns {number} gelernte Rate (0..1)
+ */
+function updateChannelResponsiveness(responsivenessMap, channelTitle, commandedLeistung, aktuelleLeistung) {
+	const state = responsivenessMap.get(channelTitle) || { lastMeasured: aktuelleLeistung, lernrate: RESPONSIVENESS_LERNRATE_STANDARD };
+
+	const gapVorher = Math.abs(commandedLeistung - state.lastMeasured);
+	if (gapVorher >= COMPLIANCE_MIN_BEFEHL_KW) {
+		const gapJetzt = Math.abs(commandedLeistung - aktuelleLeistung);
+		const geschlossenerAnteil = Math.max(0, Math.min(1, (gapVorher - gapJetzt) / gapVorher));
+		state.lernrate = RESPONSIVENESS_LERNRATE_ALPHA * geschlossenerAnteil + (1 - RESPONSIVENESS_LERNRATE_ALPHA) * state.lernrate;
+	}
+
+	state.lastMeasured = aktuelleLeistung;
+	responsivenessMap.set(channelTitle, state);
+	return state.lernrate;
+}
+
 /**
  * Ein Speicherkanal gilt als von der Speichersteuerung (EFM) kontrolliert,
  * wenn er aktiviert ist und die EFM-Steuerung für ihn eingeschaltet ist.
@@ -340,7 +375,8 @@ function ladeGewicht(s, minGewicht) {
  *     id, soc, minSoc, maxSoc,
  *     maxLadeleistung, minLadeleistung, maxEntladeleistung, minEntladeleistung,
  *     aktuelleLeistung,  // Zustand aus letztem Zyklus! + = Laden, - = Entladen
- *     nichtKonform       // true = Kanal wird wegen Compliance-Verstoß temporär von der Verteilung ausgeschlossen
+ *     nichtKonform,      // true = Kanal wird wegen Compliance-Verstoß temporär von der Verteilung ausgeschlossen
+ *     lernrate           // 0..1, gelernte Reaktionsgeschwindigkeit (0.5 = neutral/ungelernt), nur bei responsivenessAktiv relevant
  *   }
  * @param {number} dtSekunden          Zeit seit letztem Zyklus in Sekunden
  * @param {number} exportThresholdKW   Totband auf der Einspeiseseite (gleicher Schwellwert wie sonst im Adapter für "exportThreshold")
@@ -356,11 +392,19 @@ function ladeGewicht(s, minGewicht) {
  * @param {number} netzSollwertKW      gewünschter Netzsaldo (kW): + = immer diese Einspeisung anstreben,
  *                                     - = so viel Bezug tolerieren. Dient als Sicherheitsmarge gegen
  *                                     Regelverluste, die sonst zu (teurem) Netzbezug führen könnten.
- * @returns {Object} { einspeisung, bezug, speicher: [{id, leistung}] }
+ * @param {boolean} responsivenessAktiv Wenn true, werden die Gewichte zusätzlich nach gelernter
+ *                                     Reaktionsgeschwindigkeit verschoben: schnelle Speicher bekommen bei
+ *                                     kurzfristigen Abweichungen ("Spitzen") mehr Anteil, langsame Speicher
+ *                                     bei stabilem Bedarf ("Grundrauschen").
+ * @param {number} baselineKW         gelernter EWMA-Mittelwert des Gesamt-Lade-/Entladeziels aus dem
+ *                                     letzten Aufruf (signiert, + Laden/- Entladen) - stellt das
+ *                                     "Grundrauschen" dar, an dem kurzfristige Spitzen erkannt werden.
+ * @returns {Object} { einspeisung, bezug, baselineKW, speicher: [{id, leistung}] }
  *          leistung: + = Laden, - = Entladen (kW)
  *          einspeisung/bezug beziehen sich auf den Netzsollwert, nicht auf 0
+ *          baselineKW: aktualisierter Grundrauschen-Mittelwert für den nächsten Aufruf
  */
-function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, exportThresholdKW, importThresholdKW, rampeKwProS, minGewicht, fremdLadeleistung, fremdEntladeleistung, netzSollwertKW) {
+function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, exportThresholdKW, importThresholdKW, rampeKwProS, minGewicht, fremdLadeleistung, fremdEntladeleistung, netzSollwertKW, responsivenessAktiv, baselineKW) {
 	let ueberschuss = (gridExport - gridImport) - (netzSollwertKW || 0);
 
 	if (ueberschuss > 0 && ueberschuss < exportThresholdKW) {
@@ -375,35 +419,83 @@ function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, e
 	// absorbieren die Speicher also bereits genau den vorhandenen Überschuss/Bedarf.
 	const zielLeistung = speicherListe.map(s => s.aktuelleLeistung || 0);
 
+	const aktuelleGesamtLadeleistung = speicherListe.reduce((sum, s) => sum + Math.max(s.aktuelleLeistung || 0, 0), 0);
+	const aktuelleGesamtEntladeleistung = speicherListe.reduce((sum, s) => sum + Math.max(-(s.aktuelleLeistung || 0), 0), 0);
+
+	// Gesamt-Lade-/Entladeziel (signiert: + Laden, - Entladen), unabhängig von der
+	// Verteilung auf einzelne Speicher - wird für das Lernen des "Grundrauschens"
+	// gebraucht (siehe responsivenessAktiv unten). Default: aktuelles Niveau, denn
+	// bei ueberschuss=0 wird der vorhandene Bedarf bereits exakt gedeckt - das ist
+	// dann der tatsächliche Bedarf, nicht 0.
+	let gesamtZielSigned = aktuelleGesamtLadeleistung - aktuelleGesamtEntladeleistung;
 	if (ueberschuss > 0) {
+		gesamtZielSigned = Math.max((ueberschuss - fremdEntladeleistung) + aktuelleGesamtLadeleistung, 0);
+	} else if (ueberschuss < 0) {
+		gesamtZielSigned = -Math.max((Math.abs(ueberschuss) - fremdLadeleistung) + aktuelleGesamtEntladeleistung, 0);
+	}
+
+	// Optionales Lernen der Reaktionsgeschwindigkeit: neueBaselineKW ist ein
+	// langsamer EWMA-Mittelwert des Gesamtziels ("Grundrauschen"). Weicht das
+	// aktuelle Ziel stark davon ab (transientAnteil nahe 1 = "Spitze"), werden
+	// weiter unten schnelle Speicher stärker gewichtet; bei stabilem Bedarf
+	// (transientAnteil nahe 0) langsame Speicher.
+	let neueBaselineKW = baselineKW || 0;
+	let transientAnteil = 0;
+	if (responsivenessAktiv) {
+		neueBaselineKW = RESPONSIVENESS_BASELINE_ALPHA * gesamtZielSigned + (1 - RESPONSIVENESS_BASELINE_ALPHA) * (baselineKW || 0);
+		const referenz = Math.max(Math.abs(gesamtZielSigned), 0.01);
+		transientAnteil = Math.min(Math.abs(gesamtZielSigned - neueBaselineKW) / referenz, 1);
+	}
+
+	/** Blendet ein Basisgewicht optional nach gelernter Reaktionsgeschwindigkeit. */
+	const responsivenessBlend = (basisGewicht, lernrate) => {
+		if (!responsivenessAktiv) {
+			return basisGewicht;
+		}
+		const rate = lernrate == null ? RESPONSIVENESS_LERNRATE_STANDARD : lernrate;
+		const multiplikator = transientAnteil * rate + (1 - transientAnteil) * (1 - rate);
+		return Math.max(basisGewicht * multiplikator, minGewicht);
+	};
+
+	// Ohne Lernmechanismus: wie bisher nur bei ueberschuss != 0 neu verteilen, sonst
+	// halten. Mit Lernmechanismus: auch bei ueberschuss = 0 (Bedarf exakt gedeckt)
+	// wird die GLEICHE Gesamtleistung (gesamtZielSigned, s.o.) unter den Speichern
+	// nach den aktuell gelernten Gewichten neu verteilt - der Netzsaldo bleibt dabei
+	// unverändert, aber langsame Speicher übernehmen so schrittweise mehr vom
+	// eingeschwungenen Grundbedarf, während schnelle Speicher für die nächste
+	// Spitze frei werden.
+	const ladenAktiv = responsivenessAktiv ? gesamtZielSigned > 0 : ueberschuss > 0;
+	const entladenAktiv = responsivenessAktiv ? gesamtZielSigned < 0 : ueberschuss < 0;
+
+	if (ladenAktiv) {
 		// Laden: nur Speicher, die noch nicht voll sind. Da ueberschuss der Rest NACH
 		// der aktuellen Ladeleistung ist, ergibt sich das tatsächliche Gesamt-Ladeziel
 		// aus aktueller Gesamt-Ladeleistung + ueberschuss (nicht ueberschuss allein -
 		// sonst jagt der Regler einem durch das eigene Laden schrumpfenden Rest hinterher
 		// und konvergiert bei ca. der Hälfte des verfügbaren Überschusses).
-		const aktuelleGesamtLadeleistung = speicherListe.reduce((sum, s) => sum + Math.max(s.aktuelleLeistung || 0, 0), 0);
-		const ladeZielGesamt = Math.max((ueberschuss - fremdEntladeleistung) + aktuelleGesamtLadeleistung, 0);
+		const ladeZielGesamt = gesamtZielSigned;
 		const kapazitaeten = speicherListe.map(s => (s.soc < s.maxSoc && !s.nichtKonform ? s.maxLadeleistung : 0));
 		const mindestleistungen = speicherListe.map(s => s.minLadeleistung);
-		const gewichte = speicherListe.map(s => ladeGewicht(s, minGewicht));
+		const gewichte = speicherListe.map(s => responsivenessBlend(ladeGewicht(s, minGewicht), s.lernrate));
 
 		const verteilt = wasserfallVerteilungMitMindestleistung(ladeZielGesamt, kapazitaeten, mindestleistungen, gewichte);
 		for (let i = 0; i < n; i++) zielLeistung[i] = verteilt[i];
 
-	} else if (ueberschuss < 0) {
+	} else if (entladenAktiv) {
 		// Entladen: analog zum Laden - Gesamt-Entladeziel = aktuelle Gesamt-Entladeleistung
 		// + verbleibender Bedarf (ueberschuss ist bereits der Rest NACH der aktuellen
 		// Entladeleistung).
-		const aktuelleGesamtEntladeleistung = speicherListe.reduce((sum, s) => sum + Math.max(-(s.aktuelleLeistung || 0), 0), 0);
-		const entladeZielGesamt = Math.max((Math.abs(ueberschuss) - fremdLadeleistung) + aktuelleGesamtEntladeleistung, 0);
+		const entladeZielGesamt = -gesamtZielSigned;
 		const kapazitaeten = speicherListe.map(s => (s.soc > s.minSoc && !s.nichtKonform ? s.maxEntladeleistung : 0));
 		const mindestleistungen = speicherListe.map(s => s.minEntladeleistung);
-		const gewichte = speicherListe.map(s => entladeGewicht(s, minGewicht));
+		const gewichte = speicherListe.map(s => responsivenessBlend(entladeGewicht(s, minGewicht), s.lernrate));
 
 		const verteilt = wasserfallVerteilungMitMindestleistung(entladeZielGesamt, kapazitaeten, mindestleistungen, gewichte);
 		for (let i = 0; i < n; i++) zielLeistung[i] = -verteilt[i];
 	}
-	// bei ueberschuss === 0 bleibt zielLeistung auf dem zuletzt gehaltenen Wert (s.o.)
+	// bei ueberschuss === 0 und deaktiviertem Lernmechanismus bleibt zielLeistung auf
+	// dem zuletzt gehaltenen Wert (s.o.); bei aktivem Lernmechanismus wurde oben ggf.
+	// bereits per ladenAktiv/entladenAktiv neu verteilt.
 
 	// --- Rampenbegrenzung: aktuelle Leistung nur schrittweise annähern ---
 	const maxSchritt = rampeKwProS * dtSekunden;
@@ -450,6 +542,7 @@ function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, e
 	return {
 		einspeisung: restLeistung > 0 ? restLeistung : 0,
 		bezug: restLeistung < 0 ? -restLeistung : 0,
+		baselineKW: neueBaselineKW,
 		speicher: speicherListe.map((s, i) => ({
 			id: s.id,
 			leistung: neueLeistung[i]
@@ -478,6 +571,8 @@ class EnergyFlowMotion extends utils.Adapter {
 		this.powerValues = new PowerValues(0,0,0,0,0,0,0,this);
 		this.simulator = new EnergyFlowSimulator(this);
 		this.channelCompliance = new Map();
+		this.channelResponsiveness = new Map();
+		this.gesamtZielBaselineKW = 0;
 	}
 	/**
 	 * Is called when databases are connected and adapter received configuration.
@@ -1604,6 +1699,19 @@ class EnergyFlowMotion extends utils.Adapter {
 			},
 			native: {},
 		});
+		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.responsiveness' , {
+			type: 'state',
+			common: {
+				name: 'Gelernte Reaktionsgeschwindigkeit (0=träge, 1=sehr schnell)',
+				type: 'number',
+				role: 'value',
+				min: 0,
+				max: 1,
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
 		await this.setObjectNotExistsAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.shutdownDelay' , {
 			type: 'state',
 			common: {
@@ -1635,6 +1743,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.dischargePowerValue', {val: 0, ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.trackingError', {val: 0, ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.nichtKonform', {val: false, ack: true});
+		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.responsiveness', {val: RESPONSIVENESS_LERNRATE_STANDARD, ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.shutdownDelay', {val: parseFloat(cfgTableEntry.esChannelShutdownDelay), ack: true});
 		await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.activationDelay', {val: parseFloat(cfgTableEntry.esChannelActivationDelay), ack: true});
 	}
@@ -1774,6 +1883,7 @@ class EnergyFlowMotion extends utils.Adapter {
 		const minGewicht = parseNumOr(this.config.energyStorageMinWeight, 0.01);
 		const netzSollwertKW = parseNumOr(this.config.gridSetpoint, 0) / 1000;
 		const dtSekunden = parseInt(this.config.updateInterval) || 2;
+		const responsivenessAktiv = !!this.config.responsivenessLearningActive;
 
 		const speicherListe = [];
 		for (const cfgTableEntry of cfgTable) {
@@ -1811,6 +1921,15 @@ class EnergyFlowMotion extends utils.Adapter {
 				this.log.warn('energyStorageControlWaterfall: Speicher ' + cfgTableEntry.esChannelTitle + ' liefert wiederholt das Gegenteil des Befehls und wird vorübergehend von der Verteilung ausgeschlossen.');
 			}
 
+			// Optionales Lernen der Reaktionsgeschwindigkeit (siehe responsivenessLearningActive):
+			// schnelle Kanäle werden bei kurzfristigen Bedarfsspitzen bevorzugt, langsame
+			// Kanäle übernehmen mehr vom eingeschwungenen Grundbedarf.
+			let lernrate = RESPONSIVENESS_LERNRATE_STANDARD;
+			if (responsivenessAktiv) {
+				lernrate = updateChannelResponsiveness(this.channelResponsiveness, cfgTableEntry.esChannelTitle, commandedLeistung, aktuelleLeistung);
+				await this.setStateAsync(this.namespace + '.energyStorageControl.channels.' + cfgTableEntry.esChannelTitle + '.responsiveness', {val: Math.round(lernrate * 1000) / 1000, ack: true});
+			}
+
 			speicherListe.push({
 				id: cfgTableEntry.esChannelTitle,
 				soc: soc,
@@ -1822,7 +1941,8 @@ class EnergyFlowMotion extends utils.Adapter {
 				minEntladeleistung: parseNumOr(cfgTableEntry.esMinDischargePower, 0),
 				capacityKWh: parseNumOr(cfgTableEntry.esCapacity, 0),
 				aktuelleLeistung: aktuelleLeistung,
-				nichtKonform: nichtKonform
+				nichtKonform: nichtKonform,
+				lernrate: lernrate
 			});
 		}
 
@@ -1845,7 +1965,8 @@ class EnergyFlowMotion extends utils.Adapter {
 			this.log.debug('energyStorageControlWaterfall: Speicher ' + s.id + ': soc=' + s.soc + '%, minSoc=' + s.minSoc + '%, maxSoc=' + s.maxSoc
 				+ '%, capacity=' + s.capacityKWh + 'kWh, aktuelleLeistung=' + s.aktuelleLeistung + 'kW, maxLadeleistung=' + s.maxLadeleistung
 				+ 'kW, minLadeleistung=' + s.minLadeleistung + 'kW, maxEntladeleistung=' + s.maxEntladeleistung + 'kW, minEntladeleistung='
-				+ s.minEntladeleistung + 'kW, ladeGewicht=' + ladeGewicht(s, minGewicht) + ', entladeGewicht=' + entladeGewicht(s, minGewicht));
+				+ s.minEntladeleistung + 'kW, ladeGewicht=' + ladeGewicht(s, minGewicht) + ', entladeGewicht=' + entladeGewicht(s, minGewicht)
+				+ (responsivenessAktiv ? ', lernrate=' + s.lernrate : ''));
 		}
 
 		const ergebnis = regelzyklusSchritt(
@@ -1859,11 +1980,14 @@ class EnergyFlowMotion extends utils.Adapter {
 			minGewicht,
 			fremdLadeleistung,
 			fremdEntladeleistung,
-			netzSollwertKW
+			netzSollwertKW,
+			responsivenessAktiv,
+			this.gesamtZielBaselineKW
 		);
+		this.gesamtZielBaselineKW = ergebnis.baselineKW;
 
 		this.log.debug('energyStorageControlWaterfall: Ergebnis: ' + JSON.stringify(ergebnis.speicher)
-			+ ', restEinspeisung=' + ergebnis.einspeisung + 'kW, restBezug=' + ergebnis.bezug + 'kW');
+			+ ', restEinspeisung=' + ergebnis.einspeisung + 'kW, restBezug=' + ergebnis.bezug + 'kW, baseline=' + ergebnis.baselineKW + 'kW');
 
 		let sumCharge = 0;
 		let sumDischarge = 0;
