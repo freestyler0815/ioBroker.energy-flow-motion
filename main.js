@@ -424,6 +424,20 @@ function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, e
 		}
 		// Reale Speicher-Hardware lässt sich meist nicht genauer als auf 1 W ansteuern.
 		neueLeistung[i] = roundToWatt(neueLeistung[i]);
+
+		// Die Rampe fährt beim Hoch-/Runterfahren durch den Bereich zwischen 0 und der
+		// Mindestleistung, obwohl zielLeistung dort nie landen würde (siehe
+		// wasserfallVerteilungMitMindestleistung: Ziel ist immer 0 oder >= Minimum).
+		// Diesen ungültigen Zwischenbereich überspringen: je nachdem, ob gerade
+		// ein- oder ausgeschaltet wird, direkt auf die Mindestleistung bzw. auf 0 springen.
+		const betrag = Math.abs(neueLeistung[i]);
+		if (betrag > 1e-9) {
+			const minLeistungBetrag = neueLeistung[i] > 0 ? speicherListe[i].minLadeleistung : speicherListe[i].minEntladeleistung;
+			if (betrag < minLeistungBetrag) {
+				const zielBetrag = Math.abs(zielLeistung[i]);
+				neueLeistung[i] = zielBetrag >= minLeistungBetrag ? Math.sign(zielLeistung[i]) * minLeistungBetrag : 0;
+			}
+		}
 	}
 
 	// ueberschuss ist nur der Rest NACH der bisherigen Speicherleistung; für den
