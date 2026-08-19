@@ -153,12 +153,16 @@ function roundToWatt(valueKW) {
 }
 
 // Compliance-Erkennung (siehe updateChannelCompliance): ein Kanal, der wiederholt
-// das Gegenteil des befohlenen Werts liefert (z.B. ein BMS, das einen externen
-// Entladebefehl durch einen eigenen Vollladezyklus zur Zellbalancierung
-// überschreibt), wird vorübergehend von der Verteilung ausgeschlossen. Wie viele
-// Versuche (Streak-Schwelle) und wie viele Zyklen Aussetzen (Cooldown) gelten,
-// wird je Speicherkanal über esComplianceStreakThreshold/esComplianceCooldownCycles
-// konfiguriert (siehe Werte unten als Fallback, falls nicht konfiguriert).
+// nicht wie befohlen reagiert, wird vorübergehend von der Verteilung ausgeschlossen.
+// Zwei Symptome zählen dabei als "nicht erwartungsgemäß":
+//  - Vorzeichen-Umkehr: Kanal tut das Gegenteil (z.B. BMS überschreibt einen
+//    Entladebefehl durch einen eigenen Vollladezyklus zur Zellbalancierung).
+//  - Keine Reaktion: Kanal bewegt sich trotz aussagekräftigem Befehl praktisch
+//    gar nicht (z.B. hängt kurz vor 100% SoC während einer BMS-Balancierphase
+//    fest und nimmt keine weitere Ladung mehr an, obwohl soc < maxSoc).
+// Wie viele Versuche (Streak-Schwelle) und wie viele Zyklen Aussetzen (Cooldown)
+// gelten, wird je Speicherkanal über esComplianceStreakThreshold/
+// esComplianceCooldownCycles konfiguriert (siehe Werte unten als Fallback).
 const COMPLIANCE_MIN_BEFEHL_KW = 0.05;
 const COMPLIANCE_MIN_ABWEICHUNG_KW = 0.02;
 const COMPLIANCE_STREAK_SCHWELLE_STANDARD = 3;
@@ -166,15 +170,15 @@ const COMPLIANCE_AUSSCHLUSS_ZYKLEN_STANDARD = 10;
 
 /**
  * Aktualisiert die Compliance-Historie eines Speicherkanals und entscheidet,
- * ob er wegen wiederholt gegenläufigen Ist-Werten (Vorzeichen entgegengesetzt
- * zum Befehl) vorübergehend von der Lade-/Entladeverteilung ausgeschlossen
- * werden soll.
+ * ob er wegen wiederholt nicht erwartungsgemäßen Ist-Werten (Vorzeichen
+ * entgegengesetzt zum Befehl, oder gar keine Reaktion trotz aussagekräftigem
+ * Befehl) vorübergehend von der Lade-/Entladeverteilung ausgeschlossen werden soll.
  *
  * @param {Map<string, {streak: number, cooldown: number}>} complianceMap
  * @param {string} channelTitle
  * @param {number} commandedLeistung  im letzten Zyklus befohlener Wert (kW, + Laden/- Entladen)
  * @param {number} aktuelleLeistung   jetzt gemessener Wert (kW, + Laden/- Entladen)
- * @param {number} streakSchwelle     Anzahl aufeinanderfolgender gegenläufiger Zyklen bis zum Ausschluss
+ * @param {number} streakSchwelle     Anzahl aufeinanderfolgender auffälliger Zyklen bis zum Ausschluss
  * @param {number} ausschlussZyklen   Anzahl Zyklen, die der Kanal nach Überschreiten der Schwelle ausgeschlossen bleibt
  * @returns {boolean} true, wenn der Kanal aktuell ausgeschlossen ist
  */
@@ -185,10 +189,12 @@ function updateChannelCompliance(complianceMap, channelTitle, commandedLeistung,
 	const istGegenlaeufig = befehlWarAussagekraeftig
 		&& Math.abs(aktuelleLeistung) >= COMPLIANCE_MIN_ABWEICHUNG_KW
 		&& Math.sign(aktuelleLeistung) !== Math.sign(commandedLeistung);
+	const keineReaktion = befehlWarAussagekraeftig && Math.abs(aktuelleLeistung) < COMPLIANCE_MIN_ABWEICHUNG_KW;
+	const nichtErwartungsgemaess = istGegenlaeufig || keineReaktion;
 
 	if (state.cooldown > 0) {
 		state.cooldown -= 1;
-	} else if (istGegenlaeufig) {
+	} else if (nichtErwartungsgemaess) {
 		state.streak += 1;
 		if (state.streak >= streakSchwelle) {
 			state.cooldown = ausschlussZyklen;
