@@ -430,10 +430,21 @@ function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, e
 
 	// Gesamt-Lade-/Entladeziel (signiert: + Laden, - Entladen), unabhängig von der
 	// Verteilung auf einzelne Speicher - wird für das Lernen des "Grundrauschens"
-	// gebraucht (siehe responsivenessAktiv unten). Default: aktuelles Niveau, denn
-	// bei ueberschuss=0 wird der vorhandene Bedarf bereits exakt gedeckt - das ist
-	// dann der tatsächliche Bedarf, nicht 0.
-	let gesamtZielSigned = aktuelleGesamtLadeleistung - aktuelleGesamtEntladeleistung;
+	// gebraucht (siehe responsivenessAktiv unten). Default (ueberschuss=0): aktuelles
+	// Niveau, aber weiterhin um die Fremdspeicher-Gegenleistung bereinigt - sonst
+	// würden unsere Speicher unnötig weiterladen/-entladen, wenn ein schnell
+	// reagierender Fremdspeicher (z.B. eigene Nulldurchgangs-Regelung) den Netzsaldo
+	// bereits allein ausgleicht, während er selbst be-/entladen wird.
+	const ruheNiveau = aktuelleGesamtLadeleistung - aktuelleGesamtEntladeleistung;
+	let ruheZielSigned = ruheNiveau;
+	if (ruheZielSigned > 0) {
+		ruheZielSigned = Math.max(ruheZielSigned - fremdEntladeleistung, 0);
+	} else if (ruheZielSigned < 0) {
+		ruheZielSigned = -Math.max(-ruheZielSigned - fremdLadeleistung, 0);
+	}
+	const fremdKorrekturNoetig = ruheZielSigned !== ruheNiveau;
+
+	let gesamtZielSigned = ruheZielSigned;
 	if (ueberschuss > 0) {
 		gesamtZielSigned = Math.max((ueberschuss - fremdEntladeleistung) + aktuelleGesamtLadeleistung, 0);
 	} else if (ueberschuss < 0) {
@@ -463,15 +474,21 @@ function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, e
 		return Math.max(basisGewicht * multiplikator, minGewicht);
 	};
 
-	// Ohne Lernmechanismus: wie bisher nur bei ueberschuss != 0 neu verteilen, sonst
-	// halten. Mit Lernmechanismus: auch bei ueberschuss = 0 (Bedarf exakt gedeckt)
-	// wird die GLEICHE Gesamtleistung (gesamtZielSigned, s.o.) unter den Speichern
-	// nach den aktuell gelernten Gewichten neu verteilt - der Netzsaldo bleibt dabei
-	// unverändert, aber langsame Speicher übernehmen so schrittweise mehr vom
-	// eingeschwungenen Grundbedarf, während schnelle Speicher für die nächste
-	// Spitze frei werden.
-	const ladenAktiv = responsivenessAktiv ? gesamtZielSigned > 0 : ueberschuss > 0;
-	const entladenAktiv = responsivenessAktiv ? gesamtZielSigned < 0 : ueberschuss < 0;
+	// Bei ueberschuss != 0 wie gehabt anhand des Vorzeichens. Bei ueberschuss = 0
+	// (Bedarf exakt gedeckt) wird trotzdem neu verteilt, wenn entweder die
+	// Fremdspeicher-Korrektur eine echte Änderung verlangt (s.o., fremdKorrekturNoetig -
+	// sonst würden unsere Speicher unnötig weiterladen/-entladen, obwohl ein schnell
+	// reagierender Fremdspeicher den Netzsaldo bereits allein ausgleicht), oder wenn
+	// der Lernmechanismus aktiv ist (dann wird die GLEICHE Gesamtleistung nach den
+	// aktuell gelernten Gewichten neu verteilt, der Netzsaldo bleibt unverändert,
+	// aber langsame Speicher übernehmen so schrittweise mehr vom eingeschwungenen
+	// Grundbedarf, während schnelle Speicher für die nächste Spitze frei werden).
+	// Für die Ruhe-Prüfung zählt die Richtung VOR der Korrektur (ruheNiveau) - sonst
+	// würde der Zweig genau dann nicht betreten, wenn die Fremdspeicher-Korrektur das
+	// Ziel auf 0 drückt (das ist ja gerade der gewünschte Effekt).
+	const neuVerteilenBeiRuhe = ueberschuss === 0 && (fremdKorrekturNoetig || responsivenessAktiv);
+	const ladenAktiv = ueberschuss > 0 || (neuVerteilenBeiRuhe && ruheNiveau > 0);
+	const entladenAktiv = ueberschuss < 0 || (neuVerteilenBeiRuhe && ruheNiveau < 0);
 
 	if (ladenAktiv) {
 		// Laden: nur Speicher, die noch nicht voll sind. Da ueberschuss der Rest NACH
@@ -499,9 +516,9 @@ function regelzyklusSchritt(gridExport, gridImport, speicherListe, dtSekunden, e
 		const verteilt = wasserfallVerteilungMitMindestleistung(entladeZielGesamt, kapazitaeten, mindestleistungen, gewichte);
 		for (let i = 0; i < n; i++) zielLeistung[i] = -verteilt[i];
 	}
-	// bei ueberschuss === 0 und deaktiviertem Lernmechanismus bleibt zielLeistung auf
-	// dem zuletzt gehaltenen Wert (s.o.); bei aktivem Lernmechanismus wurde oben ggf.
-	// bereits per ladenAktiv/entladenAktiv neu verteilt.
+	// bei ueberschuss === 0 und ohne Grund für eine Neuverteilung (s.o.,
+	// neuVerteilenBeiRuhe) bleibt zielLeistung auf dem zuletzt gehaltenen Wert;
+	// sonst wurde oben bereits per ladenAktiv/entladenAktiv neu verteilt.
 
 	// --- Rampenbegrenzung: aktuelle Leistung nur schrittweise annähern ---
 	const maxSchritt = rampeKwProS * dtSekunden;
